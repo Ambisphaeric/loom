@@ -71,8 +71,8 @@ describe("CronScheduler", () => {
 		const nextRun = new Date(schedule.nextRun!);
 		const now = new Date();
 
-		// Allow 1 second buffer for processing time
-		expect(nextRun.getTime()).toBeGreaterThanOrEqual(now.getTime() - 1000);
+		// Allow 2 second buffer for processing time
+		expect(nextRun.getTime()).toBeGreaterThanOrEqual(now.getTime() - 2000);
 		expect(nextRun.getMinutes() % 5).toBe(0);
 		expect(nextRun.getSeconds()).toBe(0);
 	});

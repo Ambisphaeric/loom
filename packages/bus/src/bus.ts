@@ -2,10 +2,27 @@ import { ulid } from "ulidx";
 import type { MergeStrategy } from "@loomai/types";
 import type { Bus, BusHandler, ContextChunk, RawChunk } from "@loomai/types";
 import { DEFAULT_BUS_CAPACITY, MAX_GENERATION } from "@loomai/types";
+import {
+	classifyError,
+	calculateBackoff,
+	RetryQueue,
+	DeadLetterQueue,
+	DEFAULT_RETRY_POLICY,
+	type RetryPolicyOptions,
+	type RetryEvent,
+	type RetryEventHandler,
+	type ClassifiedError,
+} from "./errors.js";
 
 interface QueueEntry {
 	chunk: RawChunk;
 	enqueuedAt: number;
+	retryAttempt?: number;
+}
+
+interface HandlerResult {
+	success: boolean;
+	error?: ClassifiedError;
 }
 
 class BoundedQueue {
@@ -13,8 +30,33 @@ class BoundedQueue {
 	private processing = false;
 	private drainScheduled = false;
 	private handlers: Set<BusHandler> = new Set();
+	private retryQueue?: RetryQueue;
+	private onRetryEvent?: RetryEventHandler;
+	private handlerResults: Map<string, HandlerResult[]> = new Map();
 
-	constructor(private capacity: number) {}
+	constructor(
+		private capacity: number,
+		options: {
+			retryPolicy?: RetryPolicyOptions;
+			deadLetterQueue?: DeadLetterQueue;
+			onRetryEvent?: RetryEventHandler;
+		} = {}
+	) {
+		if (options.retryPolicy) {
+			this.onRetryEvent = options.onRetryEvent;
+			this.retryQueue = new RetryQueue(
+				options.retryPolicy,
+				options.deadLetterQueue || new DeadLetterQueue(),
+				async (state) => {
+					// Retry processing - re-execute handlers
+					await this.executeHandlers(state.chunk, true);
+				}
+			);
+			if (options.onRetryEvent) {
+				this.retryQueue.onEvent(options.onRetryEvent);
+			}
+		}
+	}
 
 	addHandler(handler: BusHandler): void {
 		this.handlers.add(handler);
@@ -59,6 +101,29 @@ class BoundedQueue {
 		}
 	}
 
+	private async executeHandlers(chunk: RawChunk, isRetry = false): Promise<HandlerResult[]> {
+		const results: HandlerResult[] = [];
+		const key = `${chunk.sessionId}:${chunk.contentType}:${chunk.timestamp}`;
+
+		for (const handler of this.handlers) {
+			try {
+				await handler(chunk);
+				results.push({ success: true });
+			} catch (err) {
+				const classified = classifyError(err);
+				results.push({ success: false, error: classified });
+
+				// Schedule for retry if transient and not already a retry
+				if (classified.retryable && !isRetry && this.retryQueue) {
+					this.retryQueue.schedule(chunk, classified);
+				}
+			}
+		}
+
+		this.handlerResults.set(key, results);
+		return results;
+	}
+
 	private async drain(): Promise<void> {
 		if (this.processing) return;
 		this.processing = true;
@@ -66,12 +131,20 @@ class BoundedQueue {
 		while (this.items.length > 0) {
 			const entry = this.items.shift();
 			if (!entry) continue;
-			const promises = [...this.handlers].map((handler) =>
-				handler(entry.chunk).catch((err) => {
-					console.error(`[Bus] Handler error for ${entry.chunk.contentType}:`, err);
-				})
-			);
-			await Promise.allSettled(promises);
+
+			const results = await this.executeHandlers(entry.chunk);
+
+			// Log errors but don't block other handlers
+			const failures = results.filter((r) => !r.success);
+			if (failures.length > 0) {
+				const permanentErrors = failures.filter((f) => !f.error?.retryable);
+				if (permanentErrors.length > 0) {
+					console.error(
+						`[Bus] Permanent handler errors for ${entry.chunk.contentType}:`,
+						permanentErrors.map((e) => e.error?.message)
+					);
+				}
+			}
 		}
 
 		this.processing = false;
@@ -79,6 +152,17 @@ class BoundedQueue {
 		if (this.items.length > 0) {
 			this.scheduleDrain();
 		}
+	}
+
+	getRetryStats(): { pending: number; deadLetter: number } {
+		return {
+			pending: this.retryQueue?.size || 0,
+			deadLetter: 0, // Would need to track DLQ separately
+		};
+	}
+
+	destroy(): void {
+		this.retryQueue?.destroy();
 	}
 }
 
@@ -387,6 +471,8 @@ export interface BusOptions {
 	capacity?: number;
 	onPassthrough?: PassthroughHandler;
 	onGenerationExceeded?: PassthroughHandler;
+	retryPolicy?: RetryPolicyOptions;
+	onRetryEvent?: RetryEventHandler;
 }
 
 export class EnhancementBus implements Bus {
@@ -395,6 +481,9 @@ export class EnhancementBus implements Bus {
 	private capacity: number;
 	private onPassthrough?: PassthroughHandler;
 	private onGenerationExceeded?: PassthroughHandler;
+	private retryPolicy?: RetryPolicyOptions;
+	private onRetryEvent?: RetryEventHandler;
+	private deadLetterQueue: DeadLetterQueue;
 
 	constructor(
 		public readonly workspace: string,
@@ -403,6 +492,9 @@ export class EnhancementBus implements Bus {
 		this.capacity = options.capacity ?? DEFAULT_BUS_CAPACITY;
 		this.onPassthrough = options.onPassthrough;
 		this.onGenerationExceeded = options.onGenerationExceeded;
+		this.retryPolicy = options.retryPolicy;
+		this.onRetryEvent = options.onRetryEvent;
+		this.deadLetterQueue = new DeadLetterQueue();
 	}
 
 	publish(chunk: RawChunk): void {
@@ -474,7 +566,11 @@ export class EnhancementBus implements Bus {
 
 	subscribe(contentType: string, handler: BusHandler): () => void {
 		if (!this.queues.has(contentType)) {
-			this.queues.set(contentType, new BoundedQueue(this.capacity));
+			this.queues.set(contentType, new BoundedQueue(this.capacity, {
+				retryPolicy: this.retryPolicy,
+				deadLetterQueue: this.deadLetterQueue,
+				onRetryEvent: this.onRetryEvent,
+			}));
 		}
 		this.queues.get(contentType)?.addHandler(handler);
 
@@ -544,6 +640,37 @@ export class EnhancementBus implements Bus {
 
 	get contentTypes(): string[] {
 		return [...this.queues.keys()];
+	}
+
+	/**
+	 * Wait for all queues to drain their current items.
+	 * Useful for testing.
+	 */
+	async drain(): Promise<void> {
+		// Wait for all BoundedQueues to finish their current drain cycles
+		const drains = [...this.queues.values()].map(async (queue) => {
+			// Poll until queue length is 0 and processing is done
+			while (queue.length > 0) {
+				await new Promise((r) => setTimeout(r, 10));
+			}
+		});
+		await Promise.all(drains);
+
+		// Wait for any pending retries
+		await new Promise((resolve) => {
+			const check = () => {
+				const pending = [...this.queues.values()].reduce(
+					(sum, q) => sum + (q.getRetryStats?.().pending || 0),
+					0
+				);
+				if (pending === 0) {
+					resolve(undefined);
+				} else {
+					setTimeout(check, 50);
+				}
+			};
+			check();
+		});
 	}
 
 	private rawToContext(chunk: RawChunk): ContextChunk {
