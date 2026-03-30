@@ -3,6 +3,7 @@ import type {
 	Channel,
 	ChannelRegistration,
 	ChannelManager,
+	ChannelManagerOptions,
 	ChannelEvent,
 	ChannelEventHandler,
 	OutputRecipient,
@@ -12,6 +13,8 @@ import type {
 	ChannelBatchResult,
 	ChannelConfig,
 	ChannelCapabilities,
+	Bus,
+	RawChunk,
 } from "./types.js";
 
 export const DEFAULT_CHANNEL_CAPABILITIES: ChannelCapabilities = {
@@ -161,8 +164,14 @@ export class ChannelManagerImpl implements ChannelManager {
 	private channels: Map<string, Channel> = new Map();
 	private registrations: Map<string, ChannelRegistration> = new Map();
 	private eventHandlers: ChannelEventHandler[] = [];
+	private bus?: Bus;
+
+	constructor(options?: ChannelManagerOptions) {
+		this.bus = options?.bus;
+	}
 
 	private emit(event: ChannelEvent): void {
+		// Emit to local handlers
 		for (const [index, handler] of this.eventHandlers.entries()) {
 			try {
 				handler(event);
@@ -171,10 +180,76 @@ export class ChannelManagerImpl implements ChannelManager {
 					`[ChannelManager] Handler ${index} failed for ${event.type}:`,
 					err,
 				);
-				// Emit to bus for system monitoring if available
-				// (Bus injection would need to be added to constructor)
 			}
 		}
+
+		// Emit error events to bus for system-wide observability
+		if (this.bus && this.isErrorEvent(event)) {
+			this.emitErrorToBus(event);
+		}
+	}
+
+	private isErrorEvent(event: ChannelEvent): boolean {
+		return event.type === "send_failed" || 
+		       event.type === "message_failed" ||
+		       (event.type === "batch_completed" && (event.failed ?? 0) > 0);
+	}
+
+	private emitErrorToBus(event: ChannelEvent): void {
+		if (!this.bus) return;
+
+		let errorCode: string;
+		let errorMessage: string;
+		let channelId: string;
+
+		switch (event.type) {
+			case "send_failed":
+				errorCode = "CHANNEL_SEND_FAILED";
+				errorMessage = event.error;
+				channelId = event.id;
+				break;
+			case "message_failed":
+				errorCode = "CHANNEL_MESSAGE_FAILED";
+				errorMessage = event.error;
+				channelId = event.id;
+				break;
+			case "batch_completed":
+				errorCode = "CHANNEL_BATCH_PARTIAL_FAILURE";
+				errorMessage = `Batch completed with ${event.failed} failures`;
+				channelId = event.id;
+				break;
+			default:
+				return;
+		}
+
+		// Publish error as RawChunk for bus consumers
+		const errorChunk: RawChunk = {
+			kind: "raw",
+			source: "channel-manager",
+			workspace: this.bus.workspace,
+			sessionId: `channel-error-${Date.now()}`,
+			contentType: "error/channel",
+			data: JSON.stringify({
+				type: event.type,
+				code: errorCode,
+				message: errorMessage,
+				channelId,
+				timestamp: Date.now(),
+			}),
+			timestamp: Date.now(),
+			generation: 0,
+			metadata: { originalEvent: event },
+		};
+
+		try {
+			this.bus.publish(errorChunk);
+		} catch (err) {
+			console.error("[ChannelManager] Failed to emit error to bus:", err);
+		}
+	}
+
+	emitToBus(event: ChannelEvent): void {
+		this.emit(event);
 	}
 
 	onEvent(handler: ChannelEventHandler): void {
@@ -217,8 +292,9 @@ export class ChannelManagerImpl implements ChannelManager {
 	): Promise<{ success: boolean; messageId?: string; error?: string }> {
 		const registration = this.registrations.get(channelId);
 		if (!registration) {
-			this.emit({ type: "send_failed", channel: channelId, id: channelId, error: "Channel not found" });
-			return { success: false, error: "Channel not found" };
+			const error = "Channel not found";
+			this.emit({ type: "send_failed", channel: channelId, id: channelId, error });
+			return { success: false, error };
 		}
 
 		// Check if content type is supported
@@ -228,8 +304,9 @@ export class ChannelManagerImpl implements ChannelManager {
 		if (!supportedTypes.includes(normalizedContentType)) {
 			// Check if we can downgrade
 			if (normalizedContentType === "image/png" || normalizedContentType === "image/jpeg") {
-				this.emit({ type: "send_failed", channel: registration.name, id: channelId, error: "content type" });
-				throw new Error(`Channel does not support content type: ${message.contentType}`);
+				const error = `Channel does not support content type: ${message.contentType}`;
+				this.emit({ type: "send_failed", channel: registration.name, id: channelId, error });
+				return { success: false, error };
 			}
 			// For text types, we allow and convert
 		}
@@ -264,13 +341,33 @@ export class ChannelManagerImpl implements ChannelManager {
 			}
 		}
 
-		const result = await channel.send(
-			{ id: "default", type: "user", metadata: { workspace: message.workspace, ...message.metadata } },
-			{ kind: this.inferPrimitiveKind(message.contentType), content, metadata: message.metadata } as OutputPrimitive,
-			{ sessionId: message.sessionId }
-		);
+		try {
+			const result = await channel.send(
+				{ id: "default", type: "user", metadata: { workspace: message.workspace, ...message.metadata } },
+				{ kind: this.inferPrimitiveKind(message.contentType), content, metadata: message.metadata } as OutputPrimitive,
+				{ sessionId: message.sessionId }
+			);
 
-		return result;
+			if (!result.success && result.error) {
+				this.emit({ 
+					type: "message_failed", 
+					channel: registration.name, 
+					id: channelId, 
+					error: result.error 
+				});
+			}
+
+			return result;
+		} catch (err) {
+			const error = err instanceof Error ? err.message : String(err);
+			this.emit({ 
+				type: "message_failed", 
+				channel: registration.name, 
+				id: channelId, 
+				error 
+			});
+			return { success: false, error };
+		}
 	}
 
 	sendBatch(
@@ -337,6 +434,6 @@ export class ChannelManagerImpl implements ChannelManager {
 	}
 }
 
-export function createChannelManager(): ChannelManager {
-	return new ChannelManagerImpl();
+export function createChannelManager(options?: { bus?: Bus }): ChannelManager {
+	return new ChannelManagerImpl(options);
 }

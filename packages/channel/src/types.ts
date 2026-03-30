@@ -1,3 +1,24 @@
+// Minimal RawChunk interface for bus error emission
+interface RawChunk {
+	kind: "raw";
+	source: string;
+	workspace: string;
+	sessionId: string;
+	contentType: string;
+	data: string | Buffer;
+	timestamp: number;
+	generation: number;
+	metadata?: Record<string, unknown>;
+}
+
+// Bus interface for error emission (matches @loomai/types Bus interface)
+export interface Bus {
+	readonly workspace: string;
+	publish(chunk: RawChunk): void;
+}
+
+export { type RawChunk };
+
 export type OutputPrimitive =
 	| { kind: "text"; content: string }
 	| { kind: "markdown"; content: string }
@@ -130,6 +151,25 @@ export interface ChannelManager {
 		channelId: string,
 		messages: Array<{ contentType: string; content: unknown; workspace: string; sessionId: string; metadata: Record<string, unknown> }>
 	): Promise<Array<{ success: boolean; messageId?: string; error?: string }>>;
+	/**
+	 * Emit channel error events to the bus for system-wide observability.
+	 * Called internally when channel operations fail.
+	 */
+	emitToBus?(event: ChannelEvent): void;
+}
+
+export interface ChannelManagerOptions {
+	/**
+	 * Optional bus instance for emitting channel error events.
+	 * When provided, channel failures will be published as bus events
+	 * for system-wide observability and reactive handling.
+	 */
+	bus?: Bus;
+	/**
+	 * Workspace identifier for bus events.
+	 * Required when bus is provided.
+	 */
+	workspace?: string;
 }
 
 export type ChannelEvent =
