@@ -1,0 +1,22 @@
+{
+  "name": "@enhancement/simulations",
+  "version": "0.1.0",
+  "type": "module",
+  "scripts": {
+    "basic-capture-store-suggest": "bun run basic-capture-store-suggest.ts",
+    "multi-session-rag": "bun run multi-session-rag.ts",
+    "engine-switching": "bun run engine-switching.ts",
+    "credentials-multi-provider": "bun run credentials-multi-provider.ts",
+    "discovery-integration": "bun run discovery-integration.ts",
+    "full-pipeline": "bun run full-pipeline.ts",
+    "all": "bun run basic-capture-store-suggest.ts && bun run multi-session-rag.ts && bun run engine-switching.ts && bun run credentials-multi-provider.ts && bun run discovery-integration.ts && bun run full-pipeline.ts"
+  },
+  "description": "",
+  "main": "index.js",
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+    "ulidx": "^2.4.1"
+  }
+}

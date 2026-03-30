@@ -1,0 +1,28 @@
+{
+  "name": "@enhancement/recipe",
+  "version": "0.1.0",
+  "type": "module",
+  "description": "Recipe execution engine with GOETEA-C steps and ComputationGraph",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
+    }
+  },
+  "scripts": {
+    "build": "tsc",
+    "test": "bun test",
+    "clean": "rm -rf dist"
+  },
+  "dependencies": {
+    "@enhancement/types": "file:../types",
+    "@enhancement/bus": "file:../bus",
+    "@enhancement/store": "file:../store",
+    "@enhancement/ai-providers": "file:../ai-providers",
+    "ulidx": "^2.3.0"
+  },
+  "devDependencies": {
+    "bun-types": "^1.3.11",
+    "typescript": "^5.4.0"
+  }
+}

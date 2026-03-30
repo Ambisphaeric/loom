@@ -1,0 +1,455 @@
+{
+  "lockfileVersion": 1,
+  "configVersion": 1,
+  "workspaces": {
+    "": {
+      "name": "@enhancement/backend-tools",
+      "devDependencies": {
+        "@types/node": "^20.0.0",
+        "turbo": "^2.0.0",
+        "typescript": "^5.4.0",
+      },
+    },
+    "packages/ai-providers": {
+      "name": "@enhancement/ai-providers",
+      "version": "0.1.0",
+      "dependencies": {
+        "@enhancement/config": "file:../config",
+        "@enhancement/types": "file:../types",
+      },
+      "devDependencies": {
+        "bun-types": "^1.3.11",
+        "typescript": "^5.4.0",
+      },
+    },
+    "packages/bus": {
+      "name": "@enhancement/bus",
+      "version": "0.1.0",
+      "dependencies": {
+        "@enhancement/types": "file:../types",
+        "ulidx": "^2.4.0",
+      },
+      "devDependencies": {
+        "@types/bun": "^1.2.0",
+        "typescript": "^5.4.0",
+      },
+    },
+    "packages/channel": {
+      "name": "@enhancement/channel",
+      "version": "0.1.0",
+      "dependencies": {
+        "@enhancement/bus": "file:../bus",
+        "@enhancement/types": "file:../types",
+        "ulidx": "^2.3.0",
+      },
+      "devDependencies": {
+        "bun-types": "^1.3.11",
+        "typescript": "^5.4.0",
+      },
+    },
+    "packages/config": {
+      "name": "@enhancement/config",
+      "version": "0.1.0",
+      "dependencies": {
+        "@enhancement/types": "file:../types",
+        "zod": "^3.22.0",
+      },
+      "devDependencies": {
+        "@types/bun": "^1.2.0",
+        "typescript": "^5.4.0",
+      },
+    },
+    "packages/credentials": {
+      "name": "@enhancement/credentials",
+      "version": "0.1.0",
+      "dependencies": {
+        "@enhancement/config": "file:../config",
+        "@enhancement/store": "file:../store",
+        "@enhancement/types": "file:../types",
+        "ulidx": "^2.3.0",
+      },
+      "devDependencies": {
+        "bun-types": "^1.3.11",
+        "typescript": "^5.4.0",
+      },
+    },
+    "packages/cron": {
+      "name": "@enhancement/cron",
+      "version": "0.1.0",
+      "dependencies": {
+        "@enhancement/bus": "file:../bus",
+        "@enhancement/recipe": "file:../recipe",
+        "@enhancement/types": "file:../types",
+        "ulidx": "^2.3.0",
+      },
+      "devDependencies": {
+        "bun-types": "^1.3.11",
+        "typescript": "^5.4.0",
+      },
+    },
+    "packages/deferred-queue": {
+      "name": "@enhancement/deferred-queue",
+      "version": "0.1.0",
+      "dependencies": {
+        "@enhancement/test-harness": "file:../test-harness",
+        "@enhancement/types": "file:../types",
+      },
+      "devDependencies": {
+        "@types/bun": "^1.2.0",
+        "typescript": "^5.4.0",
+      },
+    },
+    "packages/discovery": {
+      "name": "@enhancement/discovery",
+      "version": "0.1.0",
+      "dependencies": {
+        "@enhancement/ai-providers": "file:../ai-providers",
+        "@enhancement/config": "file:../config",
+        "@enhancement/types": "file:../types",
+      },
+      "devDependencies": {
+        "bun-types": "^1.3.11",
+        "typescript": "^5.4.0",
+      },
+    },
+    "packages/fabric": {
+      "name": "@enhancement/fabric",
+      "version": "0.1.0",
+      "dependencies": {
+        "@enhancement/types": "file:../types",
+        "ulidx": "^2.0.0",
+      },
+      "devDependencies": {
+        "bun-types": "^1.3.11",
+        "typescript": "^5.4.0",
+      },
+    },
+    "packages/join-synchronizer": {
+      "name": "@enhancement/join-synchronizer",
+      "version": "0.1.0",
+      "dependencies": {
+        "@enhancement/types": "file:../types",
+      },
+      "devDependencies": {
+        "@types/bun": "^1.2.0",
+        "typescript": "^5.4.0",
+      },
+    },
+    "packages/plugins": {
+      "name": "@enhancement/plugins",
+      "version": "0.1.0",
+      "dependencies": {
+        "@enhancement/credentials": "file:../credentials",
+        "@enhancement/discovery": "file:../discovery",
+        "@enhancement/types": "file:../types",
+      },
+      "devDependencies": {
+        "bun-types": "^1.3.11",
+        "typescript": "^5.4.0",
+      },
+    },
+    "packages/recipe": {
+      "name": "@enhancement/recipe",
+      "version": "0.1.0",
+      "dependencies": {
+        "@enhancement/ai-providers": "file:../ai-providers",
+        "@enhancement/bus": "file:../bus",
+        "@enhancement/store": "file:../store",
+        "@enhancement/types": "file:../types",
+        "ulidx": "^2.3.0",
+      },
+      "devDependencies": {
+        "bun-types": "^1.3.11",
+        "typescript": "^5.4.0",
+      },
+    },
+    "packages/screenpipe": {
+      "name": "@enhancement/screenpipe",
+      "version": "0.1.0",
+      "dependencies": {
+        "@enhancement/bus": "file:../bus",
+        "@enhancement/store": "file:../store",
+        "@enhancement/types": "file:../types",
+      },
+      "devDependencies": {
+        "@types/bun": "^1.2.0",
+        "typescript": "^5.4.0",
+      },
+    },
+    "packages/store": {
+      "name": "@enhancement/store",
+      "version": "0.1.0",
+      "dependencies": {
+        "@enhancement/config": "file:../config",
+        "@enhancement/types": "file:../types",
+        "ulidx": "^2.4.0",
+        "zod": "^3.22.0",
+      },
+      "devDependencies": {
+        "bun-types": "^1.3.11",
+        "typescript": "^5.4.0",
+      },
+    },
+    "packages/test-harness": {
+      "name": "@enhancement/test-harness",
+      "version": "0.1.0",
+      "dependencies": {
+        "@enhancement/bus": "file:../bus",
+        "@enhancement/types": "file:../types",
+      },
+      "devDependencies": {
+        "@types/bun": "^1.2.0",
+        "typescript": "^5.4.0",
+      },
+    },
+    "packages/types": {
+      "name": "@enhancement/types",
+      "version": "0.1.0",
+      "dependencies": {
+        "ulidx": "^2.4.0",
+        "zod": "^3.24.0",
+      },
+      "devDependencies": {
+        "@types/bun": "^1.2.0",
+        "typescript": "^5.4.0",
+      },
+    },
+  },
+  "packages": {
+    "@enhancement/ai-providers": ["@enhancement/ai-providers@workspace:packages/ai-providers"],
+
+    "@enhancement/bus": ["@enhancement/bus@workspace:packages/bus"],
+
+    "@enhancement/channel": ["@enhancement/channel@workspace:packages/channel"],
+
+    "@enhancement/config": ["@enhancement/config@workspace:packages/config"],
+
+    "@enhancement/credentials": ["@enhancement/credentials@workspace:packages/credentials"],
+
+    "@enhancement/cron": ["@enhancement/cron@workspace:packages/cron"],
+
+    "@enhancement/deferred-queue": ["@enhancement/deferred-queue@workspace:packages/deferred-queue"],
+
+    "@enhancement/discovery": ["@enhancement/discovery@workspace:packages/discovery"],
+
+    "@enhancement/fabric": ["@enhancement/fabric@workspace:packages/fabric"],
+
+    "@enhancement/join-synchronizer": ["@enhancement/join-synchronizer@workspace:packages/join-synchronizer"],
+
+    "@enhancement/plugins": ["@enhancement/plugins@workspace:packages/plugins"],
+
+    "@enhancement/recipe": ["@enhancement/recipe@workspace:packages/recipe"],
+
+    "@enhancement/screenpipe": ["@enhancement/screenpipe@workspace:packages/screenpipe"],
+
+    "@enhancement/store": ["@enhancement/store@workspace:packages/store"],
+
+    "@enhancement/test-harness": ["@enhancement/test-harness@workspace:packages/test-harness"],
+
+    "@enhancement/types": ["@enhancement/types@workspace:packages/types"],
+
+    "@turbo/darwin-64": ["@turbo/darwin-64@2.8.21", "", { "os": "darwin", "cpu": "x64" }, "sha512-kfGoM0Iw8ZNZpbds+4IzOe0hjvHldqJwUPRAjXJi3KBxg/QOZL95N893SRoMtf2aJ+jJ3dk32yPkp8rvcIjP9g=="],
+
+    "@turbo/darwin-arm64": ["@turbo/darwin-arm64@2.8.21", "", { "os": "darwin", "cpu": "arm64" }, "sha512-o9HEflxUEyr987x0cTUzZBhDOyL6u95JmdmlkH2VyxAw7zq2sdtM5e72y9ufv2N5SIoOBw1fVn9UES5VY5H6vQ=="],
+
+    "@turbo/linux-64": ["@turbo/linux-64@2.8.21", "", { "os": "linux", "cpu": "x64" }, "sha512-uTxlCcXWy5h1fSSymP8XSJ+AudzEHMDV3IDfKX7+DGB8kgJ+SLoTUAH7z4OFA7I/l2sznz0upPdbNNZs91YMag=="],
+
+    "@turbo/linux-arm64": ["@turbo/linux-arm64@2.8.21", "", { "os": "linux", "cpu": "arm64" }, "sha512-cdHIcxNcihHHkCHp0Y4Zb60K4Qz+CK4xw1gb6s/t/9o4SMeMj+hTBCtoW6QpPnl9xPYmxuTou8Zw6+cylTnREg=="],
+
+    "@turbo/windows-64": ["@turbo/windows-64@2.8.21", "", { "os": "win32", "cpu": "x64" }, "sha512-/iBj4OzbqEY8CX+eaeKbBTMZv2CLXNrt0692F7HnK7LcyYwyDecaAiSET6ZzL4opT7sbwkKvzAC/fhqT3Quu1A=="],
+
+    "@turbo/windows-arm64": ["@turbo/windows-arm64@2.8.21", "", { "os": "win32", "cpu": "arm64" }, "sha512-95tMA/ZbIidJFUUtkmqioQ1gf3n3I1YbRP3ZgVdWTVn2qVbkodcIdGXBKRHHrIbRsLRl99SiHi/L7IxhpZDagQ=="],
+
+    "@types/bun": ["@types/bun@1.3.11", "", { "dependencies": { "bun-types": "1.3.11" } }, "sha512-5vPne5QvtpjGpsGYXiFyycfpDF2ECyPcTSsFBMa0fraoxiQyMJ3SmuQIGhzPg2WJuWxVBoxWJ2kClYTcw/4fAg=="],
+
+    "@types/node": ["@types/node@20.19.37", "", { "dependencies": { "undici-types": "~6.21.0" } }, "sha512-8kzdPJ3FsNsVIurqBs7oodNnCEVbni9yUEkaHbgptDACOPW04jimGagZ51E6+lXUwJjgnBw+hyko/lkFWCldqw=="],
+
+    "bun-types": ["bun-types@1.3.11", "", { "dependencies": { "@types/node": "*" } }, "sha512-1KGPpoxQWl9f6wcZh57LvrPIInQMn2TQ7jsgxqpRzg+l0QPOFvJVH7HmvHo/AiPgwXy+/Thf6Ov3EdVn1vOabg=="],
+
+    "layerr": ["layerr@3.0.0", "", {}, "sha512-tv754Ki2dXpPVApOrjTyRo4/QegVb9eVFq4mjqp4+NM5NaX7syQvN5BBNfV/ZpAHCEHV24XdUVrBAoka4jt3pA=="],
+
+    "turbo": ["turbo@2.8.21", "", { "optionalDependencies": { "@turbo/darwin-64": "2.8.21", "@turbo/darwin-arm64": "2.8.21", "@turbo/linux-64": "2.8.21", "@turbo/linux-arm64": "2.8.21", "@turbo/windows-64": "2.8.21", "@turbo/windows-arm64": "2.8.21" }, "bin": { "turbo": "bin/turbo" } }, "sha512-FlJ8OD5Qcp0jTAM7E4a/RhUzRNds2GzKlyxHKA6N247VLy628rrxAGlMpIXSz6VB430+TiQDJ/SMl6PL1lu6wQ=="],
+
+    "typescript": ["typescript@5.9.3", "", { "bin": { "tsc": "bin/tsc", "tsserver": "bin/tsserver" } }, "sha512-jl1vZzPDinLr9eUt3J/t7V6FgNEw9QjvBPdysz9KfQDD41fQrC2Y4vKQdiaUpFT4bXlb1RHhLpp8wtm6M5TgSw=="],
+
+    "ulidx": ["ulidx@2.4.1", "", { "dependencies": { "layerr": "^3.0.0" } }, "sha512-xY7c8LPyzvhvew0Fn+Ek3wBC9STZAuDI/Y5andCKi9AX6/jvfaX45PhsDX8oxgPL0YFp0Jhr8qWMbS/p9375Xg=="],
+
+    "undici-types": ["undici-types@6.21.0", "", {}, "sha512-iwDZqg0QAGrg9Rav5H4n0M64c3mkR59cJ6wQp+7C4nI0gsmExaedaYLNO44eT4AtBBwjbTiGPMlt2Md0T9H9JQ=="],
+
+    "zod": ["zod@3.25.76", "", {}, "sha512-gzUt/qt81nXsFGKIFcC3YnfEAx5NkunCfnDlvuBSSFS02bcXu4Lmea0AFIUwbLWxWPx3d9p8S5QoaujKcNQxcQ=="],
+
+    "@enhancement/ai-providers/@enhancement/config": ["@enhancement/config@file:packages/config", { "dependencies": { "@enhancement/types": "file:../types", "zod": "^3.22.0" }, "devDependencies": { "@types/bun": "^1.2.0", "typescript": "^5.4.0" } }],
+
+    "@enhancement/ai-providers/@enhancement/types": ["@enhancement/types@file:packages/types", { "dependencies": { "ulidx": "^2.4.0", "zod": "^3.24.0" }, "devDependencies": { "@types/bun": "^1.2.0", "typescript": "^5.4.0" } }],
+
+    "@enhancement/bus/@enhancement/types": ["@enhancement/types@file:packages/types", { "dependencies": { "ulidx": "^2.4.0", "zod": "^3.24.0" }, "devDependencies": { "@types/bun": "^1.2.0", "typescript": "^5.4.0" } }],
+
+    "@enhancement/channel/@enhancement/bus": ["@enhancement/bus@file:packages/bus", { "dependencies": { "@enhancement/types": "file:../types", "ulidx": "^2.4.0" }, "devDependencies": { "@types/bun": "^1.2.0", "typescript": "^5.4.0" } }],
+
+    "@enhancement/channel/@enhancement/types": ["@enhancement/types@file:packages/types", { "dependencies": { "ulidx": "^2.4.0", "zod": "^3.24.0" }, "devDependencies": { "@types/bun": "^1.2.0", "typescript": "^5.4.0" } }],
+
+    "@enhancement/config/@enhancement/types": ["@enhancement/types@file:packages/types", { "dependencies": { "ulidx": "^2.4.0", "zod": "^3.24.0" }, "devDependencies": { "@types/bun": "^1.2.0", "typescript": "^5.4.0" } }],
+
+    "@enhancement/credentials/@enhancement/config": ["@enhancement/config@file:packages/config", { "dependencies": { "@enhancement/types": "file:../types", "zod": "^3.22.0" }, "devDependencies": { "@types/bun": "^1.2.0", "typescript": "^5.4.0" } }],
+
+    "@enhancement/credentials/@enhancement/store": ["@enhancement/store@file:packages/store", { "dependencies": { "@enhancement/config": "file:../config", "@enhancement/types": "file:../types", "ulidx": "^2.4.0", "zod": "^3.22.0" }, "devDependencies": { "bun-types": "^1.3.11", "typescript": "^5.4.0" } }],
+
+    "@enhancement/credentials/@enhancement/types": ["@enhancement/types@file:packages/types", { "dependencies": { "ulidx": "^2.4.0", "zod": "^3.24.0" }, "devDependencies": { "@types/bun": "^1.2.0", "typescript": "^5.4.0" } }],
+
+    "@enhancement/cron/@enhancement/bus": ["@enhancement/bus@file:packages/bus", { "dependencies": { "@enhancement/types": "file:../types", "ulidx": "^2.4.0" }, "devDependencies": { "@types/bun": "^1.2.0", "typescript": "^5.4.0" } }],
+
+    "@enhancement/cron/@enhancement/recipe": ["@enhancement/recipe@file:packages/recipe", { "dependencies": { "@enhancement/ai-providers": "file:../ai-providers", "@enhancement/bus": "file:../bus", "@enhancement/store": "file:../store", "@enhancement/types": "file:../types", "ulidx": "^2.3.0" }, "devDependencies": { "bun-types": "^1.3.11", "typescript": "^5.4.0" } }],
+
+    "@enhancement/cron/@enhancement/types": ["@enhancement/types@file:packages/types", { "dependencies": { "ulidx": "^2.4.0", "zod": "^3.24.0" }, "devDependencies": { "@types/bun": "^1.2.0", "typescript": "^5.4.0" } }],
+
+    "@enhancement/deferred-queue/@enhancement/test-harness": ["@enhancement/test-harness@file:packages/test-harness", { "dependencies": { "@enhancement/bus": "file:../bus", "@enhancement/types": "file:../types" }, "devDependencies": { "@types/bun": "^1.2.0", "typescript": "^5.4.0" } }],
+
+    "@enhancement/deferred-queue/@enhancement/types": ["@enhancement/types@file:packages/types", { "dependencies": { "ulidx": "^2.4.0", "zod": "^3.24.0" }, "devDependencies": { "@types/bun": "^1.2.0", "typescript": "^5.4.0" } }],
+
+    "@enhancement/discovery/@enhancement/ai-providers": ["@enhancement/ai-providers@file:packages/ai-providers", { "dependencies": { "@enhancement/config": "file:../config", "@enhancement/types": "file:../types" }, "devDependencies": { "bun-types": "^1.3.11", "typescript": "^5.4.0" } }],
+
+    "@enhancement/discovery/@enhancement/config": ["@enhancement/config@file:packages/config", { "dependencies": { "@enhancement/types": "file:../types", "zod": "^3.22.0" }, "devDependencies": { "@types/bun": "^1.2.0", "typescript": "^5.4.0" } }],
+
+    "@enhancement/discovery/@enhancement/types": ["@enhancement/types@file:packages/types", { "dependencies": { "ulidx": "^2.4.0", "zod": "^3.24.0" }, "devDependencies": { "@types/bun": "^1.2.0", "typescript": "^5.4.0" } }],
+
+    "@enhancement/fabric/@enhancement/types": ["@enhancement/types@file:packages/types", { "dependencies": { "ulidx": "^2.4.0", "zod": "^3.24.0" }, "devDependencies": { "@types/bun": "^1.2.0", "typescript": "^5.4.0" } }],
+
+    "@enhancement/join-synchronizer/@enhancement/types": ["@enhancement/types@file:packages/types", { "dependencies": { "ulidx": "^2.4.0", "zod": "^3.24.0" }, "devDependencies": { "@types/bun": "^1.2.0", "typescript": "^5.4.0" } }],
+
+    "@enhancement/plugins/@enhancement/credentials": ["@enhancement/credentials@file:packages/credentials", { "dependencies": { "@enhancement/config": "file:../config", "@enhancement/store": "file:../store", "@enhancement/types": "file:../types", "ulidx": "^2.3.0" }, "devDependencies": { "bun-types": "^1.3.11", "typescript": "^5.4.0" } }],
+
+    "@enhancement/plugins/@enhancement/discovery": ["@enhancement/discovery@file:packages/discovery", { "dependencies": { "@enhancement/ai-providers": "file:../ai-providers", "@enhancement/config": "file:../config", "@enhancement/types": "file:../types" }, "devDependencies": { "bun-types": "^1.3.11", "typescript": "^5.4.0" } }],
+
+    "@enhancement/plugins/@enhancement/types": ["@enhancement/types@file:packages/types", { "dependencies": { "ulidx": "^2.4.0", "zod": "^3.24.0" }, "devDependencies": { "@types/bun": "^1.2.0", "typescript": "^5.4.0" } }],
+
+    "@enhancement/recipe/@enhancement/ai-providers": ["@enhancement/ai-providers@file:packages/ai-providers", { "dependencies": { "@enhancement/config": "file:../config", "@enhancement/types": "file:../types" }, "devDependencies": { "bun-types": "^1.3.11", "typescript": "^5.4.0" } }],
+
+    "@enhancement/recipe/@enhancement/bus": ["@enhancement/bus@file:packages/bus", { "dependencies": { "@enhancement/types": "file:../types", "ulidx": "^2.4.0" }, "devDependencies": { "@types/bun": "^1.2.0", "typescript": "^5.4.0" } }],
+
+    "@enhancement/recipe/@enhancement/store": ["@enhancement/store@file:packages/store", { "dependencies": { "@enhancement/config": "file:../config", "@enhancement/types": "file:../types", "ulidx": "^2.4.0", "zod": "^3.22.0" }, "devDependencies": { "bun-types": "^1.3.11", "typescript": "^5.4.0" } }],
+
+    "@enhancement/recipe/@enhancement/types": ["@enhancement/types@file:packages/types", { "dependencies": { "ulidx": "^2.4.0", "zod": "^3.24.0" }, "devDependencies": { "@types/bun": "^1.2.0", "typescript": "^5.4.0" } }],
+
+    "@enhancement/screenpipe/@enhancement/bus": ["@enhancement/bus@file:packages/bus", { "dependencies": { "@enhancement/types": "file:../types", "ulidx": "^2.4.0" }, "devDependencies": { "@types/bun": "^1.2.0", "typescript": "^5.4.0" } }],
+
+    "@enhancement/screenpipe/@enhancement/store": ["@enhancement/store@file:packages/store", { "dependencies": { "@enhancement/config": "file:../config", "@enhancement/types": "file:../types", "ulidx": "^2.4.0", "zod": "^3.22.0" }, "devDependencies": { "bun-types": "^1.3.11", "typescript": "^5.4.0" } }],
+
+    "@enhancement/screenpipe/@enhancement/types": ["@enhancement/types@file:packages/types", { "dependencies": { "ulidx": "^2.4.0", "zod": "^3.24.0" }, "devDependencies": { "@types/bun": "^1.2.0", "typescript": "^5.4.0" } }],
+
+    "@enhancement/store/@enhancement/config": ["@enhancement/config@file:packages/config", { "dependencies": { "@enhancement/types": "file:../types", "zod": "^3.22.0" }, "devDependencies": { "@types/bun": "^1.2.0", "typescript": "^5.4.0" } }],
+
+    "@enhancement/store/@enhancement/types": ["@enhancement/types@file:packages/types", { "dependencies": { "ulidx": "^2.4.0", "zod": "^3.24.0" }, "devDependencies": { "@types/bun": "^1.2.0", "typescript": "^5.4.0" } }],
+
+    "@enhancement/test-harness/@enhancement/bus": ["@enhancement/bus@file:packages/bus", { "dependencies": { "@enhancement/types": "file:../types", "ulidx": "^2.4.0" }, "devDependencies": { "@types/bun": "^1.2.0", "typescript": "^5.4.0" } }],
+
+    "@enhancement/test-harness/@enhancement/types": ["@enhancement/types@file:packages/types", { "dependencies": { "ulidx": "^2.4.0", "zod": "^3.24.0" }, "devDependencies": { "@types/bun": "^1.2.0", "typescript": "^5.4.0" } }],
+
+    "bun-types/@types/node": ["@types/node@25.5.0", "", { "dependencies": { "undici-types": "~7.18.0" } }, "sha512-jp2P3tQMSxWugkCUKLRPVUpGaL5MVFwF8RDuSRztfwgN1wmqJeMSbKlnEtQqU8UrhTmzEmZdu2I6v2dpp7XIxw=="],
+
+    "@enhancement/ai-providers/@enhancement/config/@enhancement/types": ["@enhancement/types@file:packages/types", { "dependencies": { "ulidx": "^2.4.0", "zod": "^3.24.0" }, "devDependencies": { "@types/bun": "^1.2.0", "typescript": "^5.4.0" } }],
+
+    "@enhancement/channel/@enhancement/bus/@enhancement/types": ["@enhancement/types@file:packages/types", { "dependencies": { "ulidx": "^2.4.0", "zod": "^3.24.0" }, "devDependencies": { "@types/bun": "^1.2.0", "typescript": "^5.4.0" } }],
+
+    "@enhancement/credentials/@enhancement/config/@enhancement/types": ["@enhancement/types@file:packages/types", { "dependencies": { "ulidx": "^2.4.0", "zod": "^3.24.0" }, "devDependencies": { "@types/bun": "^1.2.0", "typescript": "^5.4.0" } }],
+
+    "@enhancement/credentials/@enhancement/store/@enhancement/config": ["@enhancement/config@file:packages/config", { "dependencies": { "@enhancement/types": "file:../types", "zod": "^3.22.0" }, "devDependencies": { "@types/bun": "^1.2.0", "typescript": "^5.4.0" } }],
+
+    "@enhancement/credentials/@enhancement/store/@enhancement/types": ["@enhancement/types@file:packages/types", { "dependencies": { "ulidx": "^2.4.0", "zod": "^3.24.0" }, "devDependencies": { "@types/bun": "^1.2.0", "typescript": "^5.4.0" } }],
+
+    "@enhancement/cron/@enhancement/bus/@enhancement/types": ["@enhancement/types@file:packages/types", { "dependencies": { "ulidx": "^2.4.0", "zod": "^3.24.0" }, "devDependencies": { "@types/bun": "^1.2.0", "typescript": "^5.4.0" } }],
+
+    "@enhancement/cron/@enhancement/recipe/@enhancement/ai-providers": ["@enhancement/ai-providers@file:packages/ai-providers", { "dependencies": { "@enhancement/config": "file:../config", "@enhancement/types": "file:../types" }, "devDependencies": { "bun-types": "^1.3.11", "typescript": "^5.4.0" } }],
+
+    "@enhancement/cron/@enhancement/recipe/@enhancement/bus": ["@enhancement/bus@file:packages/bus", { "dependencies": { "@enhancement/types": "file:../types", "ulidx": "^2.4.0" }, "devDependencies": { "@types/bun": "^1.2.0", "typescript": "^5.4.0" } }],
+
+    "@enhancement/cron/@enhancement/recipe/@enhancement/store": ["@enhancement/store@file:packages/store", { "dependencies": { "@enhancement/config": "file:../config", "@enhancement/types": "file:../types", "ulidx": "^2.4.0", "zod": "^3.22.0" }, "devDependencies": { "bun-types": "^1.3.11", "typescript": "^5.4.0" } }],
+
+    "@enhancement/cron/@enhancement/recipe/@enhancement/types": ["@enhancement/types@file:packages/types", { "dependencies": { "ulidx": "^2.4.0", "zod": "^3.24.0" }, "devDependencies": { "@types/bun": "^1.2.0", "typescript": "^5.4.0" } }],
+
+    "@enhancement/deferred-queue/@enhancement/test-harness/@enhancement/bus": ["@enhancement/bus@file:packages/bus", { "dependencies": { "@enhancement/types": "file:../types", "ulidx": "^2.4.0" }, "devDependencies": { "@types/bun": "^1.2.0", "typescript": "^5.4.0" } }],
+
+    "@enhancement/deferred-queue/@enhancement/test-harness/@enhancement/types": ["@enhancement/types@file:packages/types", { "dependencies": { "ulidx": "^2.4.0", "zod": "^3.24.0" }, "devDependencies": { "@types/bun": "^1.2.0", "typescript": "^5.4.0" } }],
+
+    "@enhancement/discovery/@enhancement/ai-providers/@enhancement/config": ["@enhancement/config@file:packages/config", { "dependencies": { "@enhancement/types": "file:../types", "zod": "^3.22.0" }, "devDependencies": { "@types/bun": "^1.2.0", "typescript": "^5.4.0" } }],
+
+    "@enhancement/discovery/@enhancement/ai-providers/@enhancement/types": ["@enhancement/types@file:packages/types", { "dependencies": { "ulidx": "^2.4.0", "zod": "^3.24.0" }, "devDependencies": { "@types/bun": "^1.2.0", "typescript": "^5.4.0" } }],
+
+    "@enhancement/discovery/@enhancement/config/@enhancement/types": ["@enhancement/types@file:packages/types", { "dependencies": { "ulidx": "^2.4.0", "zod": "^3.24.0" }, "devDependencies": { "@types/bun": "^1.2.0", "typescript": "^5.4.0" } }],
+
+    "@enhancement/plugins/@enhancement/credentials/@enhancement/config": ["@enhancement/config@file:packages/config", { "dependencies": { "@enhancement/types": "file:../types", "zod": "^3.22.0" }, "devDependencies": { "@types/bun": "^1.2.0", "typescript": "^5.4.0" } }],
+
+    "@enhancement/plugins/@enhancement/credentials/@enhancement/store": ["@enhancement/store@file:packages/store", { "dependencies": { "@enhancement/config": "file:../config", "@enhancement/types": "file:../types", "ulidx": "^2.4.0", "zod": "^3.22.0" }, "devDependencies": { "bun-types": "^1.3.11", "typescript": "^5.4.0" } }],
+
+    "@enhancement/plugins/@enhancement/credentials/@enhancement/types": ["@enhancement/types@file:packages/types", { "dependencies": { "ulidx": "^2.4.0", "zod": "^3.24.0" }, "devDependencies": { "@types/bun": "^1.2.0", "typescript": "^5.4.0" } }],
+
+    "@enhancement/plugins/@enhancement/discovery/@enhancement/ai-providers": ["@enhancement/ai-providers@file:packages/ai-providers", { "dependencies": { "@enhancement/config": "file:../config", "@enhancement/types": "file:../types" }, "devDependencies": { "bun-types": "^1.3.11", "typescript": "^5.4.0" } }],
+
+    "@enhancement/plugins/@enhancement/discovery/@enhancement/config": ["@enhancement/config@file:packages/config", { "dependencies": { "@enhancement/types": "file:../types", "zod": "^3.22.0" }, "devDependencies": { "@types/bun": "^1.2.0", "typescript": "^5.4.0" } }],
+
+    "@enhancement/plugins/@enhancement/discovery/@enhancement/types": ["@enhancement/types@file:packages/types", { "dependencies": { "ulidx": "^2.4.0", "zod": "^3.24.0" }, "devDependencies": { "@types/bun": "^1.2.0", "typescript": "^5.4.0" } }],
+
+    "@enhancement/recipe/@enhancement/ai-providers/@enhancement/config": ["@enhancement/config@file:packages/config", { "dependencies": { "@enhancement/types": "file:../types", "zod": "^3.22.0" }, "devDependencies": { "@types/bun": "^1.2.0", "typescript": "^5.4.0" } }],
+
+    "@enhancement/recipe/@enhancement/ai-providers/@enhancement/types": ["@enhancement/types@file:packages/types", { "dependencies": { "ulidx": "^2.4.0", "zod": "^3.24.0" }, "devDependencies": { "@types/bun": "^1.2.0", "typescript": "^5.4.0" } }],
+
+    "@enhancement/recipe/@enhancement/bus/@enhancement/types": ["@enhancement/types@file:packages/types", { "dependencies": { "ulidx": "^2.4.0", "zod": "^3.24.0" }, "devDependencies": { "@types/bun": "^1.2.0", "typescript": "^5.4.0" } }],
+
+    "@enhancement/recipe/@enhancement/store/@enhancement/config": ["@enhancement/config@file:packages/config", { "dependencies": { "@enhancement/types": "file:../types", "zod": "^3.22.0" }, "devDependencies": { "@types/bun": "^1.2.0", "typescript": "^5.4.0" } }],
+
+    "@enhancement/recipe/@enhancement/store/@enhancement/types": ["@enhancement/types@file:packages/types", { "dependencies": { "ulidx": "^2.4.0", "zod": "^3.24.0" }, "devDependencies": { "@types/bun": "^1.2.0", "typescript": "^5.4.0" } }],
+
+    "@enhancement/screenpipe/@enhancement/bus/@enhancement/types": ["@enhancement/types@file:packages/types", { "dependencies": { "ulidx": "^2.4.0", "zod": "^3.24.0" }, "devDependencies": { "@types/bun": "^1.2.0", "typescript": "^5.4.0" } }],
+
+    "@enhancement/screenpipe/@enhancement/store/@enhancement/config": ["@enhancement/config@file:packages/config", { "dependencies": { "@enhancement/types": "file:../types", "zod": "^3.22.0" }, "devDependencies": { "@types/bun": "^1.2.0", "typescript": "^5.4.0" } }],
+
+    "@enhancement/screenpipe/@enhancement/store/@enhancement/types": ["@enhancement/types@file:packages/types", { "dependencies": { "ulidx": "^2.4.0", "zod": "^3.24.0" }, "devDependencies": { "@types/bun": "^1.2.0", "typescript": "^5.4.0" } }],
+
+    "@enhancement/store/@enhancement/config/@enhancement/types": ["@enhancement/types@file:packages/types", { "dependencies": { "ulidx": "^2.4.0", "zod": "^3.24.0" }, "devDependencies": { "@types/bun": "^1.2.0", "typescript": "^5.4.0" } }],
+
+    "@enhancement/test-harness/@enhancement/bus/@enhancement/types": ["@enhancement/types@file:packages/types", { "dependencies": { "ulidx": "^2.4.0", "zod": "^3.24.0" }, "devDependencies": { "@types/bun": "^1.2.0", "typescript": "^5.4.0" } }],
+
+    "bun-types/@types/node/undici-types": ["undici-types@7.18.2", "", {}, "sha512-AsuCzffGHJybSaRrmr5eHr81mwJU3kjw6M+uprWvCXiNeN9SOGwQ3Jn8jb8m3Z6izVgknn1R0FTCEAP2QrLY/w=="],
+
+    "@enhancement/credentials/@enhancement/store/@enhancement/config/@enhancement/types": ["@enhancement/types@file:packages/types", { "dependencies": { "ulidx": "^2.4.0", "zod": "^3.24.0" }, "devDependencies": { "@types/bun": "^1.2.0", "typescript": "^5.4.0" } }],
+
+    "@enhancement/cron/@enhancement/recipe/@enhancement/ai-providers/@enhancement/config": ["@enhancement/config@file:packages/config", { "dependencies": { "@enhancement/types": "file:../types", "zod": "^3.22.0" }, "devDependencies": { "@types/bun": "^1.2.0", "typescript": "^5.4.0" } }],
+
+    "@enhancement/cron/@enhancement/recipe/@enhancement/ai-providers/@enhancement/types": ["@enhancement/types@file:packages/types", { "dependencies": { "ulidx": "^2.4.0", "zod": "^3.24.0" }, "devDependencies": { "@types/bun": "^1.2.0", "typescript": "^5.4.0" } }],
+
+    "@enhancement/cron/@enhancement/recipe/@enhancement/bus/@enhancement/types": ["@enhancement/types@file:packages/types", { "dependencies": { "ulidx": "^2.4.0", "zod": "^3.24.0" }, "devDependencies": { "@types/bun": "^1.2.0", "typescript": "^5.4.0" } }],
+
+    "@enhancement/cron/@enhancement/recipe/@enhancement/store/@enhancement/config": ["@enhancement/config@file:packages/config", { "dependencies": { "@enhancement/types": "file:../types", "zod": "^3.22.0" }, "devDependencies": { "@types/bun": "^1.2.0", "typescript": "^5.4.0" } }],
+
+    "@enhancement/cron/@enhancement/recipe/@enhancement/store/@enhancement/types": ["@enhancement/types@file:packages/types", { "dependencies": { "ulidx": "^2.4.0", "zod": "^3.24.0" }, "devDependencies": { "@types/bun": "^1.2.0", "typescript": "^5.4.0" } }],
+
+    "@enhancement/deferred-queue/@enhancement/test-harness/@enhancement/bus/@enhancement/types": ["@enhancement/types@file:packages/types", { "dependencies": { "ulidx": "^2.4.0", "zod": "^3.24.0" }, "devDependencies": { "@types/bun": "^1.2.0", "typescript": "^5.4.0" } }],
+
+    "@enhancement/discovery/@enhancement/ai-providers/@enhancement/config/@enhancement/types": ["@enhancement/types@file:packages/types", { "dependencies": { "ulidx": "^2.4.0", "zod": "^3.24.0" }, "devDependencies": { "@types/bun": "^1.2.0", "typescript": "^5.4.0" } }],
+
+    "@enhancement/plugins/@enhancement/credentials/@enhancement/config/@enhancement/types": ["@enhancement/types@file:packages/types", { "dependencies": { "ulidx": "^2.4.0", "zod": "^3.24.0" }, "devDependencies": { "@types/bun": "^1.2.0", "typescript": "^5.4.0" } }],
+
+    "@enhancement/plugins/@enhancement/credentials/@enhancement/store/@enhancement/config": ["@enhancement/config@file:packages/config", { "dependencies": { "@enhancement/types": "file:../types", "zod": "^3.22.0" }, "devDependencies": { "@types/bun": "^1.2.0", "typescript": "^5.4.0" } }],
+
+    "@enhancement/plugins/@enhancement/credentials/@enhancement/store/@enhancement/types": ["@enhancement/types@file:packages/types", { "dependencies": { "ulidx": "^2.4.0", "zod": "^3.24.0" }, "devDependencies": { "@types/bun": "^1.2.0", "typescript": "^5.4.0" } }],
+
+    "@enhancement/plugins/@enhancement/discovery/@enhancement/ai-providers/@enhancement/config": ["@enhancement/config@file:packages/config", { "dependencies": { "@enhancement/types": "file:../types", "zod": "^3.22.0" }, "devDependencies": { "@types/bun": "^1.2.0", "typescript": "^5.4.0" } }],
+
+    "@enhancement/plugins/@enhancement/discovery/@enhancement/ai-providers/@enhancement/types": ["@enhancement/types@file:packages/types", { "dependencies": { "ulidx": "^2.4.0", "zod": "^3.24.0" }, "devDependencies": { "@types/bun": "^1.2.0", "typescript": "^5.4.0" } }],
+
+    "@enhancement/plugins/@enhancement/discovery/@enhancement/config/@enhancement/types": ["@enhancement/types@file:packages/types", { "dependencies": { "ulidx": "^2.4.0", "zod": "^3.24.0" }, "devDependencies": { "@types/bun": "^1.2.0", "typescript": "^5.4.0" } }],
+
+    "@enhancement/recipe/@enhancement/ai-providers/@enhancement/config/@enhancement/types": ["@enhancement/types@file:packages/types", { "dependencies": { "ulidx": "^2.4.0", "zod": "^3.24.0" }, "devDependencies": { "@types/bun": "^1.2.0", "typescript": "^5.4.0" } }],
+
+    "@enhancement/recipe/@enhancement/store/@enhancement/config/@enhancement/types": ["@enhancement/types@file:packages/types", { "dependencies": { "ulidx": "^2.4.0", "zod": "^3.24.0" }, "devDependencies": { "@types/bun": "^1.2.0", "typescript": "^5.4.0" } }],
+
+    "@enhancement/screenpipe/@enhancement/store/@enhancement/config/@enhancement/types": ["@enhancement/types@file:packages/types", { "dependencies": { "ulidx": "^2.4.0", "zod": "^3.24.0" }, "devDependencies": { "@types/bun": "^1.2.0", "typescript": "^5.4.0" } }],
+
+    "@enhancement/cron/@enhancement/recipe/@enhancement/ai-providers/@enhancement/config/@enhancement/types": ["@enhancement/types@file:packages/types", { "dependencies": { "ulidx": "^2.4.0", "zod": "^3.24.0" }, "devDependencies": { "@types/bun": "^1.2.0", "typescript": "^5.4.0" } }],
+
+    "@enhancement/cron/@enhancement/recipe/@enhancement/store/@enhancement/config/@enhancement/types": ["@enhancement/types@file:packages/types", { "dependencies": { "ulidx": "^2.4.0", "zod": "^3.24.0" }, "devDependencies": { "@types/bun": "^1.2.0", "typescript": "^5.4.0" } }],
+
+    "@enhancement/plugins/@enhancement/credentials/@enhancement/store/@enhancement/config/@enhancement/types": ["@enhancement/types@file:packages/types", { "dependencies": { "ulidx": "^2.4.0", "zod": "^3.24.0" }, "devDependencies": { "@types/bun": "^1.2.0", "typescript": "^5.4.0" } }],
+
+    "@enhancement/plugins/@enhancement/discovery/@enhancement/ai-providers/@enhancement/config/@enhancement/types": ["@enhancement/types@file:packages/types", { "dependencies": { "ulidx": "^2.4.0", "zod": "^3.24.0" }, "devDependencies": { "@types/bun": "^1.2.0", "typescript": "^5.4.0" } }],
+  }
+}

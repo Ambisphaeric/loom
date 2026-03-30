@@ -1,0 +1,43 @@
+{
+  "name": "@enhancement/loom",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "Loom - foundational primitives for AI systems (fabric patterns, event bus, storage, types)",
+  "workspaces": [
+    "packages/*"
+  ],
+  "scripts": {
+    "build": "turbo run build",
+    "test": "turbo run test",
+    "test:types": "bun test packages/types/test/",
+    "test:bus": "bun test packages/bus/test/",
+    "test:test-harness": "bun test packages/test-harness/test/",
+    "dev": "turbo run dev",
+    "lint": "turbo run lint",
+    "clean": "turbo run clean",
+    "e2e": "bun e2e/runner.ts",
+    "e2e:multi-source": "bun e2e/multi-source-pipeline.ts",
+    "e2e:deferred": "bun e2e/deferred-workflow.ts",
+    "e2e:parallel": "bun e2e/parallel-processing.ts",
+    "e2e:model-pairing": "bun e2e/model-pairing.ts",
+    "e2e:full": "bun e2e/full-integration.ts",
+    "e2e:store-screenpipe": "bun e2e/store-screenpipe.ts",
+    "test:unit": "turbo run test",
+    "test:e2e": "bun test/e2e-runner.ts",
+    "test:simulations": "bun test/e2e-runner.ts --simulations-only",
+    "test:integration": "bun test test/integration/*.test.ts",
+    "test:all": "bun test/all-runner.ts",
+    "test:coverage": "bun test/coverage-report.ts",
+    "test:ci": "bun test/ci-runner.ts"
+  },
+  "devDependencies": {
+    "turbo": "^2.0.0",
+    "typescript": "^5.4.0",
+    "@types/node": "^20.0.0"
+  },
+  "engines": {
+    "node": ">=18"
+  },
+  "packageManager": "bun@1.1.0"
+}

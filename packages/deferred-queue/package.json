@@ -1,0 +1,25 @@
+{
+  "name": "@enhancement/deferred-queue",
+  "version": "0.1.0",
+  "type": "module",
+  "description": "[act later] functionality for delayed/conditional action execution",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
+    }
+  },
+  "scripts": {
+    "build": "tsc",
+    "test": "bun test",
+    "clean": "rm -rf dist"
+  },
+  "dependencies": {
+    "@enhancement/types": "file:../types",
+    "@enhancement/test-harness": "file:../test-harness"
+  },
+  "devDependencies": {
+    "@types/bun": "^1.2.0",
+    "typescript": "^5.4.0"
+  }
+}

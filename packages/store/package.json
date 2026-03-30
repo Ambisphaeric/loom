@@ -1,0 +1,27 @@
+{
+  "name": "@enhancement/store",
+  "version": "0.1.0",
+  "type": "module",
+  "description": "Persistent storage with pluggable vector engine (zvec default, sqlite-vec, chroma)",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
+    }
+  },
+  "scripts": {
+    "build": "tsc",
+    "test": "bun test",
+    "clean": "rm -rf dist"
+  },
+  "dependencies": {
+    "@enhancement/types": "file:../types",
+    "@enhancement/config": "file:../config",
+    "ulidx": "^2.4.0",
+    "zod": "^3.22.0"
+  },
+  "devDependencies": {
+    "bun-types": "^1.3.11",
+    "typescript": "^5.4.0"
+  }
+}

@@ -1,0 +1,2055 @@
+================================================================
+Directory Structure
+================================================================
+src/
+  config-manager.ts
+  discovery.ts
+  index.ts
+  model-setup.ts
+test/
+  conformance.test.ts
+package.json
+tsconfig.json
+
+================================================================
+Files
+================================================================
+
+================
+File: src/config-manager.ts
+================
+// ============================================================================
+// Enhancement — Configuration Management (Vercel AI SDK Bridge)
+// ============================================================================
+// Manages workspace and global configuration with model endpoint testing
+// Outputs provider:model IDs compatible with Vercel AI SDK
+
+import { z } from "zod";
+import type { ModelPurpose, WorkspaceConfig, GlobalConfig } from "@enhancement/types";
+
+// ============================================================================
+// Types
+// ============================================================================
+
+export type EndpointProvider =
+  | "ollama"
+  | "lmstudio"
+  | "openai"
+  | "anthropic"
+  | "google"
+  | "mistral"
+  | "cohere"
+  | "azure"
+  | "custom";
+
+export type TestStatus = "untested" | "success" | "failed";
+
+/**
+ * Model Endpoint configuration
+ * Stores settings for Vercel AI SDK provider initialization
+ */
+export interface ModelEndpoint {
+  id: string;
+  /** Display name for UI */
+  name: string;
+  /** Vercel AI SDK provider ID (e.g., "ollama", "openai") */
+  providerId: EndpointProvider;
+  /** Model ID within that provider (e.g., "llama3.1", "gpt-4") */
+  modelId: string;
+  /** Base URL for local providers (Ollama, LM Studio) */
+  baseUrl?: string;
+  /** API key for cloud providers */
+  apiKey?: string;
+  /** Additional provider options (headers, etc.) */
+  extraHeaders?: Record<string, string>;
+  /** Purpose this endpoint serves */
+  purpose: ModelPurpose;
+  /** Capabilities: streaming, vision, tool-calling, etc. */
+  capabilities: string[];
+}
+
+export interface EndpointTestState {
+  endpointId: string;
+  lastTestedAt?: number;
+  status: TestStatus;
+  errorMessage?: string;
+  latencyMs?: number;
+}
+
+export interface TestResult {
+  success: boolean;
+  latencyMs?: number;
+  errorMessage?: string;
+}
+
+export interface ConfigManagerOptions {
+  dataDir?: string;
+}
+
+/**
+ * Resolved model reference for Vercel AI SDK
+ * Use with: registry.languageModel(`${providerId}:${modelId}`)
+ */
+export interface ResolvedModel {
+  /** Full ID for registry lookup: "providerId:modelId" */
+  registryId: string;
+  providerId: string;
+  modelId: string;
+  endpoint: ModelEndpoint;
+  testState: EndpointTestState | null;
+}
+
+// ============================================================================
+// Zod Schemas
+// ============================================================================
+
+const endpointProviderSchema = z.enum([
+  "ollama",
+  "lmstudio",
+  "openai",
+  "anthropic",
+  "google",
+  "mistral",
+  "cohere",
+  "azure",
+  "custom",
+]);
+
+const modelEndpointSchema = z.object({
+  id: z.string(),
+  name: z.string(),
+  providerId: endpointProviderSchema,
+  modelId: z.string(),
+  baseUrl: z.string().url().optional(),
+  apiKey: z.string().optional(),
+  extraHeaders: z.record(z.string()).optional(),
+  purpose: z.string(),
+  capabilities: z.array(z.string()),
+});
+
+// ============================================================================
+// In-Memory Store
+// ============================================================================
+
+interface ConfigStore {
+  global: GlobalConfig;
+  workspaces: Map<string, WorkspaceData>;
+}
+
+interface WorkspaceData {
+  id: string;
+  name: string;
+  config: WorkspaceConfig;
+  endpoints: Map<string, ModelEndpoint>;
+  testStates: Map<string, EndpointTestState>;
+  createdAt: number;
+  updatedAt: number;
+}
+
+// ============================================================================
+// Config Manager
+// ============================================================================
+
+export class ConfigManager {
+  private dataDir: string;
+  private store: ConfigStore;
+  private initialized = false;
+
+  constructor(options: ConfigManagerOptions = {}) {
+    this.dataDir = options.dataDir?.replace(/^~/, process.env.HOME || "~") ||
+      `${process.env.HOME}/.enhancement`;
+
+    this.store = {
+      global: this.getDefaultGlobalConfig(),
+      workspaces: new Map(),
+    };
+  }
+
+  async initialize(): Promise<void> {
+    await this.ensureDir(this.dataDir);
+    await this.loadFromDisk();
+    this.initialized = true;
+  }
+
+  close(): void {
+    this.persistToDisk().catch(console.error);
+  }
+
+  // ========================================================================
+  // Global Config
+  // ========================================================================
+
+  async getGlobalConfig(): Promise<GlobalConfig> {
+    this.checkInitialized();
+    return { ...this.store.global };
+  }
+
+  async updateGlobalConfig(updates: Partial<GlobalConfig>): Promise<GlobalConfig> {
+    this.checkInitialized();
+    this.store.global = { ...this.store.global, ...updates };
+    await this.persistToDisk();
+    return { ...this.store.global };
+  }
+
+  // ========================================================================
+  // Workspace Management
+  // ========================================================================
+
+  async createWorkspace(
+    id: string,
+    name: string,
+    config: Partial<WorkspaceConfig> = {}
+  ): Promise<WorkspaceConfig> {
+    this.checkInitialized();
+
+    const now = Date.now();
+    const fullConfig: WorkspaceConfig = {
+      name,
+      version: "1.0.0",
+      schema_version: 1,
+      description: config.description || "",
+      model: config.model || { default: "" },
+      pipeline: config.pipeline || {
+        sources: [],
+        fetchers: [],
+        transforms: [],
+        store: "default",
+        tools: [],
+      },
+      behaviors: config.behaviors || {
+        proactive_suggestions: false,
+        proactive_fetch: false,
+        suggestion_interval: "5m",
+        suggestion_min_confidence: 0.7,
+        auto_actions: false,
+        change_detection: true,
+        max_concurrent_fetches: 3,
+      },
+    };
+
+    const workspaceData: WorkspaceData = {
+      id,
+      name,
+      config: fullConfig,
+      endpoints: new Map(),
+      testStates: new Map(),
+      createdAt: now,
+      updatedAt: now,
+    };
+
+    this.store.workspaces.set(id, workspaceData);
+    await this.persistToDisk();
+
+    return fullConfig;
+  }
+
+  async getWorkspaceConfig(id: string): Promise<WorkspaceConfig | null> {
+    this.checkInitialized();
+    const workspace = this.store.workspaces.get(id);
+    return workspace ? { ...workspace.config } : null;
+  }
+
+  async saveWorkspaceConfig(id: string, config: WorkspaceConfig): Promise<void> {
+    this.checkInitialized();
+    const workspace = this.store.workspaces.get(id);
+    if (!workspace) {
+      throw new Error(`Workspace ${id} not found`);
+    }
+
+    workspace.config = config;
+    workspace.name = config.name;
+    workspace.updatedAt = Date.now();
+    await this.persistToDisk();
+  }
+
+  async listWorkspaces(): Promise<Array<{ id: string; name: string }>> {
+    this.checkInitialized();
+    return Array.from(this.store.workspaces.values()).map((w) => ({
+      id: w.id,
+      name: w.name,
+    }));
+  }
+
+  // ========================================================================
+  // Model Endpoint Management
+  // ========================================================================
+
+  async setModelEndpoint(
+    workspaceId: string,
+    endpoint: ModelEndpoint
+  ): Promise<void> {
+    this.checkInitialized();
+    modelEndpointSchema.parse(endpoint);
+
+    const workspace = this.store.workspaces.get(workspaceId);
+    if (!workspace) {
+      throw new Error(`Workspace ${workspaceId} not found`);
+    }
+
+    workspace.endpoints.set(endpoint.id, endpoint);
+    workspace.updatedAt = Date.now();
+
+    if (!workspace.testStates.has(endpoint.id)) {
+      workspace.testStates.set(endpoint.id, {
+        endpointId: endpoint.id,
+        status: "untested",
+      });
+    }
+
+    await this.persistToDisk();
+  }
+
+  async getModelEndpoint(
+    workspaceId: string,
+    endpointId: string
+  ): Promise<ModelEndpoint | null> {
+    this.checkInitialized();
+    const workspace = this.store.workspaces.get(workspaceId);
+    if (!workspace) return null;
+
+    const endpoint = workspace.endpoints.get(endpointId);
+    return endpoint ? { ...endpoint } : null;
+  }
+
+  async getModelEndpoints(
+    workspaceId: string,
+    purpose?: ModelPurpose
+  ): Promise<ModelEndpoint[]> {
+    this.checkInitialized();
+    const workspace = this.store.workspaces.get(workspaceId);
+    if (!workspace) return [];
+
+    let endpoints = Array.from(workspace.endpoints.values());
+
+    if (purpose) {
+      endpoints = endpoints.filter((ep) => ep.purpose === purpose);
+    }
+
+    return endpoints;
+  }
+
+  async deleteModelEndpoint(
+    workspaceId: string,
+    endpointId: string
+  ): Promise<void> {
+    this.checkInitialized();
+    const workspace = this.store.workspaces.get(workspaceId);
+    if (!workspace) return;
+
+    workspace.endpoints.delete(endpointId);
+    workspace.testStates.delete(endpointId);
+    workspace.updatedAt = Date.now();
+    await this.persistToDisk();
+  }
+
+  // ========================================================================
+  // Endpoint Testing
+  // ========================================================================
+
+  async testModelEndpoint(
+    workspaceId: string,
+    endpointId: string,
+    testFn: (endpoint: ModelEndpoint) => Promise<boolean>
+  ): Promise<EndpointTestState> {
+    this.checkInitialized();
+
+    const endpoint = await this.getModelEndpoint(workspaceId, endpointId);
+    if (!endpoint) {
+      throw new Error(`Endpoint ${endpointId} not found`);
+    }
+
+    const startTime = Date.now();
+    let result: TestResult;
+
+    try {
+      const success = await testFn(endpoint);
+      result = {
+        success,
+        latencyMs: Date.now() - startTime,
+        errorMessage: success ? undefined : "Test function returned false",
+      };
+    } catch (error) {
+      result = {
+        success: false,
+        errorMessage: error instanceof Error ? error.message : String(error),
+        latencyMs: Date.now() - startTime,
+      };
+    }
+
+    const testState: EndpointTestState = {
+      endpointId,
+      lastTestedAt: Date.now(),
+      status: result.success ? "success" : "failed",
+      errorMessage: result.errorMessage,
+      latencyMs: result.latencyMs,
+    };
+
+    const workspace = this.store.workspaces.get(workspaceId);
+    if (workspace) {
+      workspace.testStates.set(endpointId, testState);
+      workspace.updatedAt = Date.now();
+      await this.persistToDisk();
+    }
+
+    return testState;
+  }
+
+  async getEndpointTestState(
+    workspaceId: string,
+    endpointId: string
+  ): Promise<EndpointTestState | null> {
+    this.checkInitialized();
+    const workspace = this.store.workspaces.get(workspaceId);
+    if (!workspace) return null;
+
+    const state = workspace.testStates.get(endpointId);
+    return state ? { ...state } : null;
+  }
+
+  async getReadyModelEndpoints(workspaceId: string): Promise<ModelEndpoint[]> {
+    this.checkInitialized();
+    const allEndpoints = await this.getModelEndpoints(workspaceId);
+    const ready: ModelEndpoint[] = [];
+
+    for (const endpoint of allEndpoints) {
+      const testState = await this.getEndpointTestState(workspaceId, endpoint.id);
+      if (testState?.status === "success") {
+        ready.push(endpoint);
+      }
+    }
+
+    return ready;
+  }
+
+  // ========================================================================
+  // Vercel AI SDK Integration
+  // ========================================================================
+
+  /**
+   * Resolve model endpoint to Vercel AI SDK registry ID
+   * Returns format: "providerId:modelId" for use with registry.languageModel()
+   * 
+   * Example:
+   * ```typescript
+   * const resolved = await config.resolveModel(workspace, "ocr");
+   * if (resolved) {
+   *   const model = registry.languageModel(resolved.registryId);
+   *   const { text } = await generateText({ model, prompt: "Extract text" });
+   * }
+   * ```
+   */
+  async resolveModel(
+    workspaceId: string,
+    purpose: ModelPurpose,
+    options: { requireTested?: boolean; preferLocal?: boolean } = {}
+  ): Promise<ResolvedModel | null> {
+    this.checkInitialized();
+    const endpoints = await this.getModelEndpoints(workspaceId, purpose);
+
+    if (endpoints.length === 0) return null;
+
+    let candidates = endpoints;
+    if (options.requireTested) {
+      const testedIds = new Set<string>();
+      for (const ep of endpoints) {
+        const testState = await this.getEndpointTestState(workspaceId, ep.id);
+        if (testState?.status === "success") {
+          testedIds.add(ep.id);
+        }
+      }
+      candidates = endpoints.filter((ep) => testedIds.has(ep.id));
+    }
+
+    if (candidates.length === 0) return null;
+
+    if (options.preferLocal) {
+      const localProviders = ["ollama", "lmstudio"];
+      const localFirst = [
+        ...candidates.filter((ep) => localProviders.includes(ep.providerId)),
+        ...candidates.filter((ep) => !localProviders.includes(ep.providerId)),
+      ];
+      candidates = localFirst;
+    }
+
+    const endpoint = candidates[0];
+    const testState = await this.getEndpointTestState(workspaceId, endpoint.id);
+
+    return {
+      registryId: `${endpoint.providerId}:${endpoint.modelId}`,
+      providerId: endpoint.providerId,
+      modelId: endpoint.modelId,
+      endpoint,
+      testState,
+    };
+  }
+
+  /**
+   * Get all available models formatted for Vercel AI SDK provider registry
+   * 
+   * Use this to initialize createProviderRegistry() with dynamic configuration
+   * 
+   * Example:
+   * ```typescript
+   * const providers = await config.getProviderConfigs(workspace);
+   * const registry = createProviderRegistry(providers);
+   * ```
+   */
+  async getProviderConfigs(
+    workspaceId: string
+  ): Promise<Record<string, ProviderConfig>> {
+    this.checkInitialized();
+    const endpoints = await this.getModelEndpoints(workspaceId);
+    const configs: Record<string, ProviderConfig> = {};
+
+    for (const endpoint of endpoints) {
+      // Group by providerId
+      if (!configs[endpoint.providerId]) {
+        configs[endpoint.providerId] = {
+          baseUrl: endpoint.baseUrl,
+          apiKey: endpoint.apiKey,
+          extraHeaders: endpoint.extraHeaders,
+          models: {},
+        };
+      }
+
+      configs[endpoint.providerId].models[endpoint.modelId] = {
+        id: endpoint.id,
+        purpose: endpoint.purpose,
+        capabilities: endpoint.capabilities,
+      };
+    }
+
+    return configs;
+  }
+
+  // ========================================================================
+  // Private Helpers
+  // ========================================================================
+
+  private checkInitialized(): void {
+    if (!this.initialized) {
+      throw new Error("ConfigManager not initialized. Call initialize() first.");
+    }
+  }
+
+  private async ensureDir(dir: string): Promise<void> {
+    try {
+      await import("node:fs/promises").then((fs) =>
+        fs.mkdir(dir, { recursive: true })
+      );
+    } catch {
+      // Directory may already exist
+    }
+  }
+
+  private getDefaultGlobalConfig(): GlobalConfig {
+    return {
+      apiKeys: {},
+      defaultModel: "",
+      dataDir: this.dataDir,
+      privacy: {
+        telemetry: false,
+        retentionDays: 30,
+      },
+    };
+  }
+
+  private async loadFromDisk(): Promise<void> {
+    try {
+      const fs = await import("node:fs/promises");
+      const path = `${this.dataDir}/config.json`;
+
+      try {
+        const data = await fs.readFile(path, "utf-8");
+        const parsed = JSON.parse(data);
+
+        if (parsed.global) {
+          this.store.global = { ...this.store.global, ...parsed.global };
+        }
+
+        if (parsed.workspaces) {
+          for (const [id, data] of Object.entries(parsed.workspaces)) {
+            const workspaceData: WorkspaceData = {
+              id,
+              name: (data as { name: string }).name,
+              config: (data as { config: WorkspaceConfig }).config,
+              endpoints: new Map(
+                Object.entries((data as { endpoints: Record<string, ModelEndpoint> }).endpoints || {})
+              ),
+              testStates: new Map(
+                Object.entries((data as { testStates: Record<string, EndpointTestState> }).testStates || {})
+              ),
+              createdAt: (data as { createdAt: number }).createdAt,
+              updatedAt: (data as { updatedAt: number }).updatedAt,
+            };
+            this.store.workspaces.set(id, workspaceData);
+          }
+        }
+      } catch {
+        // File doesn't exist or is invalid
+      }
+    } catch {
+      // FS not available
+    }
+  }
+
+  private async persistToDisk(): Promise<void> {
+    try {
+      const fs = await import("node:fs/promises");
+      const path = `${this.dataDir}/config.json`;
+
+      const workspaces: Record<string, unknown> = {};
+      for (const [id, data] of this.store.workspaces.entries()) {
+        workspaces[id] = {
+          id: data.id,
+          name: data.name,
+          config: data.config,
+          endpoints: Object.fromEntries(data.endpoints),
+          testStates: Object.fromEntries(data.testStates),
+          createdAt: data.createdAt,
+          updatedAt: data.updatedAt,
+        };
+      }
+
+      const data = {
+        global: this.store.global,
+        workspaces,
+      };
+
+      await fs.writeFile(path, JSON.stringify(data, null, 2));
+    } catch {
+      // FS not available
+    }
+  }
+}
+
+// ============================================================================
+// Provider Config Types
+// ============================================================================
+
+export interface ProviderConfig {
+  baseUrl?: string;
+  apiKey?: string;
+  extraHeaders?: Record<string, string>;
+  models: Record<string, ModelMetadata>;
+}
+
+export interface ModelMetadata {
+  id: string;
+  purpose: ModelPurpose;
+  capabilities: string[];
+}
+
+// ============================================================================
+// Factory Function
+// ============================================================================
+
+export function createConfigManager(
+  options: ConfigManagerOptions = {}
+): ConfigManager {
+  return new ConfigManager(options);
+}
+
+================
+File: src/discovery.ts
+================
+// ============================================================================
+// Enhancement — Model Discovery Subsystem
+// ============================================================================
+// Auto-discovery of local LLM providers by port scanning
+// Optional model list fetching from discovered providers
+
+import type { EndpointProvider, ModelPurpose } from "./index.js";
+
+// Known provider ports and endpoints
+const PROVIDER_DISCOVERY_CONFIG: Record<
+  EndpointProvider,
+  {
+    ports: number[];
+    healthEndpoint: string;
+    modelsEndpoint?: string;
+    requiresApiKey: boolean;
+    isLocal: boolean;
+  }
+> = {
+  ollama: {
+    ports: [11434],
+    healthEndpoint: "/api/tags",
+    modelsEndpoint: "/api/tags",
+    requiresApiKey: false,
+    isLocal: true,
+  },
+  lmstudio: {
+    ports: [1234, 8080],
+    healthEndpoint: "/v1/models",
+    modelsEndpoint: "/v1/models",
+    requiresApiKey: false,
+    isLocal: true,
+  },
+  openai: {
+    ports: [],
+    healthEndpoint: "/v1/models",
+    modelsEndpoint: "/v1/models",
+    requiresApiKey: true,
+    isLocal: false,
+  },
+  anthropic: {
+    ports: [],
+    healthEndpoint: "/v1/models",
+    requiresApiKey: true,
+    isLocal: false,
+  },
+  google: {
+    ports: [],
+    healthEndpoint: "/v1/models",
+    requiresApiKey: true,
+    isLocal: false,
+  },
+  mistral: {
+    ports: [],
+    healthEndpoint: "/v1/models",
+    requiresApiKey: true,
+    isLocal: false,
+  },
+  cohere: {
+    ports: [],
+    healthEndpoint: "/v1/models",
+    requiresApiKey: true,
+    isLocal: false,
+  },
+  azure: {
+    ports: [],
+    healthEndpoint: "/models",
+    requiresApiKey: true,
+    isLocal: false,
+  },
+  custom: {
+    ports: [],
+    healthEndpoint: "/health",
+    requiresApiKey: false,
+    isLocal: false,
+  },
+};
+
+export interface DiscoveredProvider {
+  providerId: EndpointProvider;
+  baseUrl: string;
+  isReachable: boolean;
+  models: DiscoveredModel[];
+  latencyMs: number;
+  error?: string;
+}
+
+export interface DiscoveredModel {
+  id: string;
+  name: string;
+  purpose?: ModelPurpose;
+  capabilities: string[];
+  size?: string;
+  format?: string;
+}
+
+export interface DiscoveryOptions {
+  /** Specific providers to scan (default: all local providers) */
+  providers?: EndpointProvider[];
+  /** Timeout per request in ms (default: 3000) */
+  timeoutMs?: number;
+  /** Whether to fetch available models from discovered providers */
+  fetchModels?: boolean;
+  /** Optional API keys for cloud providers */
+  apiKeys?: Partial<Record<EndpointProvider, string>>;
+  /** Custom base URLs for cloud providers */
+  baseUrls?: Partial<Record<EndpointProvider, string>>;
+}
+
+export interface DiscoveryResult {
+  providers: DiscoveredProvider[];
+  totalFound: number;
+  reachableCount: number;
+  scanDurationMs: number;
+}
+
+/**
+ * Discover available LLM providers
+ *
+ * Scans local ports for Ollama (11434), LM Studio (1234, 8080), etc.
+ * Optionally fetches available models from discovered providers.
+ *
+ * Example:
+ * ```typescript
+ * const discovery = new ModelDiscovery();
+ *
+ * // Scan local providers
+ * const result = await discovery.scanLocal();
+ * console.log(`Found ${result.totalFound} providers`);
+ *
+ * // Check if Ollama is running
+ * const ollama = result.providers.find(p => p.providerId === 'ollama');
+ * if (ollama?.isReachable) {
+ *   console.log('Available models:', ollama.models.map(m => m.id));
+ * }
+ * ```
+ */
+export class ModelDiscovery {
+  private abortControllers: AbortController[] = [];
+
+  /**
+   * Scan for local providers (Ollama, LM Studio, etc.)
+   */
+  async scanLocal(options: Omit<DiscoveryOptions, 'apiKeys' | 'baseUrls'> = {}): Promise<DiscoveryResult> {
+    const startTime = Date.now();
+    const localProviders = this.getLocalProviders();
+    const providers = await this.scanProviders(localProviders, options);
+
+    return {
+      providers,
+      totalFound: providers.length,
+      reachableCount: providers.filter((p) => p.isReachable).length,
+      scanDurationMs: Date.now() - startTime,
+    };
+  }
+
+  /**
+   * Check if a specific provider is available
+   */
+  async checkProvider(
+    providerId: EndpointProvider,
+    options: Omit<DiscoveryOptions, 'providers'> = {}
+  ): Promise<DiscoveredProvider | null> {
+    const config = PROVIDER_DISCOVERY_CONFIG[providerId];
+    if (!config) return null;
+
+    const baseUrl = options.baseUrls?.[providerId] || this.getDefaultBaseUrl(providerId);
+    if (!baseUrl) return null;
+
+    return this.checkEndpoint(providerId, baseUrl, {
+      ...options,
+      fetchModels: options.fetchModels ?? true,
+    });
+  }
+
+  /**
+   * Quick check if Ollama is running
+   */
+  async isOllamaRunning(baseUrl = "http://localhost:11434"): Promise<boolean> {
+    const result = await this.checkEndpoint("ollama", baseUrl, { fetchModels: false });
+    return result?.isReachable ?? false;
+  }
+
+  /**
+   * Quick check if LM Studio is running
+   */
+  async isLmStudioRunning(baseUrl = "http://localhost:1234"): Promise<boolean> {
+    const result = await this.checkEndpoint("lmstudio", baseUrl, { fetchModels: false });
+    return result?.isReachable ?? false;
+  }
+
+  /**
+   * Get available models from a running Ollama instance
+   */
+  async getOllamaModels(baseUrl = "http://localhost:11434"): Promise<DiscoveredModel[]> {
+    const result = await this.checkEndpoint("ollama", baseUrl, { fetchModels: true });
+    return result?.models ?? [];
+  }
+
+  /**
+   * Get available models from LM Studio
+   */
+  async getLmStudioModels(baseUrl = "http://localhost:1234"): Promise<DiscoveredModel[]> {
+    const result = await this.checkEndpoint("lmstudio", baseUrl, { fetchModels: true });
+    return result?.models ?? [];
+  }
+
+  /**
+   * Abort all pending discovery operations
+   */
+  abort(): void {
+    for (const controller of this.abortControllers) {
+      controller.abort();
+    }
+    this.abortControllers = [];
+  }
+
+  // ========================================================================
+  // Private Methods
+  // ========================================================================
+
+  private getLocalProviders(): EndpointProvider[] {
+    return (Object.keys(PROVIDER_DISCOVERY_CONFIG) as EndpointProvider[]).filter(
+      (p) => PROVIDER_DISCOVERY_CONFIG[p].isLocal
+    );
+  }
+
+  private getDefaultBaseUrl(providerId: EndpointProvider): string | null {
+    const config = PROVIDER_DISCOVERY_CONFIG[providerId];
+    if (!config.isLocal || config.ports.length === 0) return null;
+    return `http://localhost:${config.ports[0]}`;
+  }
+
+  private async scanProviders(
+    providerIds: EndpointProvider[],
+    options: Omit<DiscoveryOptions, 'apiKeys' | 'baseUrls'>
+  ): Promise<DiscoveredProvider[]> {
+    const timeoutMs = options.timeoutMs ?? 3000;
+    const fetchModels = options.fetchModels ?? true;
+    const discoveries: Promise<DiscoveredProvider | null>[] = [];
+
+    for (const providerId of providerIds) {
+      const config = PROVIDER_DISCOVERY_CONFIG[providerId];
+
+      for (const port of config.ports) {
+        const baseUrl = `http://localhost:${port}`;
+        discoveries.push(
+          this.checkEndpoint(providerId, baseUrl, {
+            timeoutMs,
+            fetchModels,
+          })
+        );
+      }
+    }
+
+    const results = await Promise.all(discoveries);
+    return results.filter((r): r is DiscoveredProvider => r !== null);
+  }
+
+  private async checkEndpoint(
+    providerId: EndpointProvider,
+    baseUrl: string,
+    options: { timeoutMs?: number; fetchModels?: boolean; apiKey?: string }
+  ): Promise<DiscoveredProvider | null> {
+    const config = PROVIDER_DISCOVERY_CONFIG[providerId];
+    const timeoutMs = options.timeoutMs ?? 3000;
+    const controller = new AbortController();
+    this.abortControllers.push(controller);
+
+    const startTime = Date.now();
+
+    try {
+      // Check health endpoint
+      const healthUrl = `${baseUrl}${config.healthEndpoint}`;
+      const headers: Record<string, string> = {};
+
+      if (options.apiKey) {
+        headers["Authorization"] = `Bearer ${options.apiKey}`;
+      }
+
+      const response = await fetch(healthUrl, {
+        method: "GET",
+        headers,
+        signal: AbortSignal.timeout(timeoutMs),
+      });
+
+      const latencyMs = Date.now() - startTime;
+
+      if (!response.ok && response.status !== 404) {
+        return {
+          providerId,
+          baseUrl,
+          isReachable: false,
+          models: [],
+          latencyMs,
+          error: `HTTP ${response.status}`,
+        };
+      }
+
+      // Provider is reachable
+      let models: DiscoveredModel[] = [];
+
+      if (options.fetchModels && config.modelsEndpoint) {
+        try {
+          models = await this.fetchModels(providerId, baseUrl, headers, timeoutMs);
+        } catch {
+          // Ignore model fetch errors, still mark as reachable
+        }
+      }
+
+      return {
+        providerId,
+        baseUrl,
+        isReachable: true,
+        models,
+        latencyMs,
+      };
+    } catch (error) {
+      const latencyMs = Date.now() - startTime;
+      return {
+        providerId,
+        baseUrl,
+        isReachable: false,
+        models: [],
+        latencyMs,
+        error: error instanceof Error ? error.message : String(error),
+      };
+    } finally {
+      const index = this.abortControllers.indexOf(controller);
+      if (index > -1) {
+        this.abortControllers.splice(index, 1);
+      }
+    }
+  }
+
+  private async fetchModels(
+    providerId: EndpointProvider,
+    baseUrl: string,
+    headers: Record<string, string>,
+    timeoutMs: number
+  ): Promise<DiscoveredModel[]> {
+    const config = PROVIDER_DISCOVERY_CONFIG[providerId];
+    if (!config.modelsEndpoint) return [];
+
+    const url = `${baseUrl}${config.modelsEndpoint}`;
+
+    const response = await fetch(url, {
+      headers,
+      signal: AbortSignal.timeout(timeoutMs),
+    });
+
+    if (!response.ok) return [];
+
+    const data = await response.json();
+
+    // Parse based on provider format
+    switch (providerId) {
+      case "ollama":
+        return this.parseOllamaModels(data);
+      case "lmstudio":
+        return this.parseLmStudioModels(data);
+      default:
+        return [];
+    }
+  }
+
+  private parseOllamaModels(data: unknown): DiscoveredModel[] {
+    // Ollama format: { models: [{ name: "llama3.1", size: ..., modified_at: ... }] }
+    const models = (data as { models?: Array<{ name: string; size?: number; modified_at?: string }> })?.models;
+    if (!Array.isArray(models)) return [];
+
+    return models.map((m) => ({
+      id: m.name,
+      name: m.name,
+      purpose: this.inferPurposeFromModelName(m.name),
+      capabilities: this.inferCapabilitiesFromModelName(m.name),
+      size: m.size ? this.formatBytes(m.size) : undefined,
+    }));
+  }
+
+  private parseLmStudioModels(data: unknown): DiscoveredModel[] {
+    // LM Studio format: { data: [{ id: "...", object: "model" }] }
+    const models = (data as { data?: Array<{ id: string }> })?.data;
+    if (!Array.isArray(models)) return [];
+
+    return models.map((m) => ({
+      id: m.id,
+      name: m.id,
+      purpose: this.inferPurposeFromModelName(m.id),
+      capabilities: this.inferCapabilitiesFromModelName(m.id),
+    }));
+  }
+
+  private inferPurposeFromModelName(modelId: string): ModelPurpose {
+    const lower = modelId.toLowerCase();
+    if (lower.includes("embed") || lower.includes("e5") || lower.includes("bge")) {
+      return "embedding";
+    }
+    if (lower.includes("vision") || lower.includes("llava") || lower.includes("clip")) {
+      return "vision";
+    }
+    if (lower.includes("ocr") || lower.includes("glm-4v")) {
+      return "ocr";
+    }
+    if (lower.includes("whisper") || lower.includes("audio")) {
+      return "audio";
+    }
+    if (lower.includes("reasoning") || lower.includes("o1") || lower.includes("claude-3-opus")) {
+      return "reasoning";
+    }
+    if (lower.includes("fast") || lower.includes("tiny") || lower.includes("small")) {
+      return "fast";
+    }
+    return "default";
+  }
+
+  private inferCapabilitiesFromModelName(modelId: string): string[] {
+    const capabilities: string[] = ["streaming"];
+    const lower = modelId.toLowerCase();
+
+    if (lower.includes("vision") || lower.includes("llava") || lower.includes("clip") || lower.includes("4v")) {
+      capabilities.push("vision");
+    }
+    if (lower.includes("tool") || lower.includes("function")) {
+      capabilities.push("tool-calling");
+    }
+    if (lower.includes("json") || lower.includes("gpt-4")) {
+      capabilities.push("json_mode");
+    }
+
+    return capabilities;
+  }
+
+  private formatBytes(bytes: number): string {
+    if (bytes === 0) return "0 B";
+    const k = 1024;
+    const sizes = ["B", "KB", "MB", "GB", "TB"];
+    const i = Math.floor(Math.log(bytes) / Math.log(k));
+    return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + " " + sizes[i];
+  }
+}
+
+/**
+ * Create a ModelDiscovery instance
+ */
+export function createModelDiscovery(): ModelDiscovery {
+  return new ModelDiscovery();
+}
+
+================
+File: src/index.ts
+================
+export { ConfigManager, createConfigManager } from "./config-manager.js";
+export {
+  ModelEndpointSetup,
+  createModelEndpointSetup,
+  ENDPOINT_TEMPLATES,
+} from "./model-setup.js";
+export {
+  ModelDiscovery,
+  createModelDiscovery,
+} from "./discovery.js";
+export type {
+  ModelEndpoint,
+  EndpointTestState,
+  TestResult,
+  ConfigManagerOptions,
+  EndpointProvider,
+  TestStatus,
+  ResolvedModel,
+  ProviderConfig,
+  ModelMetadata,
+} from "./config-manager.js";
+export type {
+  EndpointTemplate,
+  EndpointSetupResult,
+} from "./model-setup.js";
+export type {
+  DiscoveredProvider,
+  DiscoveredModel,
+  DiscoveryOptions,
+  DiscoveryResult,
+} from "./discovery.js";
+
+================
+File: src/model-setup.ts
+================
+// ============================================================================
+// Enhancement — Model Endpoint UI / CLI
+// ============================================================================
+// Interactive model pairing with test and database persistence
+// For human use in CLI, or programmatic use by agents
+
+import type { ConfigManager, ModelEndpoint, EndpointTestState } from "./config-manager.js";
+import type { EndpointProvider, ModelPurpose } from "./index.js";
+import {
+  ModelDiscovery,
+  type DiscoveredProvider,
+  type DiscoveredModel,
+} from "./discovery.js";
+
+export interface EndpointTemplate {
+  name: string;
+  providerId: EndpointProvider;
+  baseUrl: string;
+  modelId: string;
+  purpose: ModelPurpose;
+  capabilities: string[];
+  testPrompt?: string;
+}
+
+// Pre-configured templates for common providers
+export const ENDPOINT_TEMPLATES: Record<string, EndpointTemplate> = {
+  "ollama-llama3": {
+    name: "Llama 3.1 (Local Ollama)",
+    providerId: "ollama",
+    baseUrl: "http://localhost:11434",
+    modelId: "llama3.1",
+    purpose: "default",
+    capabilities: ["streaming"],
+    testPrompt: "Say hello in one word.",
+  },
+  "ollama-vision": {
+    name: "Llava/Llama-Vision (Local Ollama)",
+    providerId: "ollama",
+    baseUrl: "http://localhost:11434",
+    modelId: "llava",
+    purpose: "vision",
+    capabilities: ["streaming", "vision"],
+    testPrompt: "Describe this test image briefly.",
+  },
+  "lmstudio-glm-ocr": {
+    name: "GLM OCR (LM Studio)",
+    providerId: "lmstudio",
+    baseUrl: "http://localhost:1234",
+    modelId: "glm-ocr",
+    purpose: "ocr",
+    capabilities: ["vision"],
+    testPrompt: "Extract text from this image.",
+  },
+  "lmstudio-general": {
+    name: "LM Studio Loaded Model",
+    providerId: "lmstudio",
+    baseUrl: "http://localhost:1234",
+    modelId: "local-model",
+    purpose: "default",
+    capabilities: ["streaming"],
+    testPrompt: "Say hello in one word.",
+  },
+  "openai-gpt4": {
+    name: "GPT-4 (OpenAI)",
+    providerId: "openai",
+    baseUrl: "https://api.openai.com/v1",
+    modelId: "gpt-4",
+    purpose: "reasoning",
+    capabilities: ["streaming", "vision", "json_mode"],
+    testPrompt: "Say hello in one word.",
+  },
+  "openai-gpt4-turbo": {
+    name: "GPT-4 Turbo (OpenAI)",
+    providerId: "openai",
+    baseUrl: "https://api.openai.com/v1",
+    modelId: "gpt-4-turbo",
+    purpose: "default",
+    capabilities: ["streaming", "vision", "json_mode"],
+    testPrompt: "Say hello in one word.",
+  },
+  "anthropic-claude": {
+    name: "Claude (Anthropic)",
+    providerId: "anthropic",
+    baseUrl: "https://api.anthropic.com/v1",
+    modelId: "claude-3-sonnet-20240229",
+    purpose: "reasoning",
+    capabilities: ["streaming", "vision"],
+    testPrompt: "Say hello in one word.",
+  },
+};
+
+export interface EndpointSetupResult {
+  endpoint: ModelEndpoint;
+  testResult: EndpointTestState;
+  success: boolean;
+}
+
+/**
+ * Model Endpoint Setup UI / API
+ * 
+ * Handles the pairing flow:
+ * 1. Select provider (Ollama, LM Studio, OpenAI, etc.)
+ * 2. Enter connection details (URL, API key if needed)
+ * 3. Test connection
+ * 4. Save to database with test state
+ */
+export class ModelEndpointSetup {
+  constructor(private config: ConfigManager) {}
+
+  /**
+   * Set up endpoint from a template
+   * 
+   * Example for human CLI:
+   * ```typescript
+   * const result = await setup.fromTemplate(workspaceId, "ollama-llama3", {
+   *   baseUrl: "http://localhost:11434",
+   * });
+   * 
+   * if (result.success) {
+   *   console.log(`✓ ${result.endpoint.name} is ready`);
+   * }
+   * ```
+   */
+  async fromTemplate(
+    workspaceId: string,
+    templateId: string,
+    overrides: Partial<ModelEndpoint> = {},
+    customTestFn?: (endpoint: ModelEndpoint) => Promise<boolean>
+  ): Promise<EndpointSetupResult> {
+    const template = ENDPOINT_TEMPLATES[templateId];
+    if (!template) {
+      throw new Error(`Unknown template: ${templateId}`);
+    }
+
+    const endpoint: ModelEndpoint = {
+      id: `${template.providerId}-${Date.now()}`,
+      name: overrides.name || template.name,
+      providerId: template.providerId,
+      baseUrl: overrides.baseUrl || template.baseUrl,
+      modelId: overrides.modelId || template.modelId,
+      purpose: template.purpose,
+      capabilities: template.capabilities,
+      apiKey: overrides.apiKey,
+    };
+
+    return this.setupEndpoint(workspaceId, endpoint, customTestFn);
+  }
+
+  /**
+   * Set up endpoint from manual configuration
+   */
+  async fromManualConfig(
+    workspaceId: string,
+    config: {
+      name: string;
+      providerId: EndpointProvider;
+      baseUrl: string;
+      modelId: string;
+      purpose: ModelPurpose;
+      capabilities?: string[];
+      apiKey?: string;
+    },
+    customTestFn?: (endpoint: ModelEndpoint) => Promise<boolean>
+  ): Promise<EndpointSetupResult> {
+    const endpoint: ModelEndpoint = {
+      id: `${config.providerId}-${Date.now()}`,
+      name: config.name,
+      providerId: config.providerId,
+      baseUrl: config.baseUrl,
+      modelId: config.modelId,
+      purpose: config.purpose,
+      capabilities: config.capabilities || [],
+      apiKey: config.apiKey,
+    };
+
+    return this.setupEndpoint(workspaceId, endpoint, customTestFn);
+  }
+
+  /**
+   * Interactive endpoint setup (for CLI)
+   * 
+   * Prompts user for all required fields, tests connection,
+   * and saves to database.
+   */
+  async interactiveSetup(
+    workspaceId: string,
+    providerId: EndpointProvider,
+    testFunctions: Record<EndpointProvider, (endpoint: ModelEndpoint) => Promise<boolean>>
+  ): Promise<EndpointSetupResult> {
+    // This would integrate with a CLI library like inquirer or prompts
+    // For now, we'll return a placeholder that explains the expected flow
+    throw new Error(
+      "Interactive setup requires a CLI library. " +
+      "Use fromTemplate() or fromManualConfig() for programmatic setup."
+    );
+  }
+
+  /**
+   * Re-test an existing endpoint
+   */
+  async retestEndpoint(
+    workspaceId: string,
+    endpointId: string,
+    testFn: (endpoint: ModelEndpoint) => Promise<boolean>
+  ): Promise<EndpointTestState> {
+    return this.config.testModelEndpoint(workspaceId, endpointId, testFn);
+  }
+
+  /**
+   * Get all endpoints with their test status for display
+   */
+  async getEndpointsWithStatus(workspaceId: string): Promise<
+    Array<{
+      endpoint: ModelEndpoint;
+      testState: EndpointTestState | null;
+      isReady: boolean;
+    }>
+  > {
+    const endpoints = await this.config.getModelEndpoints(workspaceId);
+    const results = [];
+
+    for (const endpoint of endpoints) {
+      const testState = await this.config.getEndpointTestState(workspaceId, endpoint.id);
+      results.push({
+        endpoint,
+        testState,
+        isReady: testState?.status === "success",
+      });
+    }
+
+    return results;
+  }
+
+  /**
+   * Get summary of available models by purpose
+   */
+  async getPurposeSummary(workspaceId: string): Promise<
+    Record<ModelPurpose, { available: number; tested: number; recommended?: string }>
+  > {
+    const purposes: ModelPurpose[] = [
+      "default",
+      "reasoning",
+      "fast",
+      "embedding",
+      "ocr",
+      "vision",
+      "audio",
+    ];
+
+    const summary = {} as Record<
+      ModelPurpose,
+      { available: number; tested: number; recommended?: string }
+    >;
+
+    for (const purpose of purposes) {
+      const endpoints = await this.config.getModelEndpoints(workspaceId, purpose);
+      const tested = await this.config.getReadyModelEndpoints(workspaceId);
+      const testedForPurpose = tested.filter((ep) => ep.purpose === purpose);
+
+      let recommended: string | undefined;
+      if (testedForPurpose.length > 0) {
+        // Prefer local providers
+        const local = testedForPurpose.find((ep) =>
+          ["ollama", "lmstudio"].includes(ep.providerId)
+        );
+        recommended = (local || testedForPurpose[0]).name;
+      }
+
+      summary[purpose] = {
+        available: endpoints.length,
+        tested: testedForPurpose.length,
+        recommended,
+      };
+    }
+
+    return summary;
+  }
+
+  /**
+   * Get available templates
+   */
+  getAvailableTemplates(): Array<{ id: string; template: EndpointTemplate }> {
+    return Object.entries(ENDPOINT_TEMPLATES).map(([id, template]) => ({
+      id,
+      template,
+    }));
+  }
+
+  /**
+   * Get templates filtered by purpose
+   */
+  getTemplatesByPurpose(purpose: ModelPurpose): Array<{ id: string; template: EndpointTemplate }> {
+    return Object.entries(ENDPOINT_TEMPLATES)
+      .filter(([, template]) => template.purpose === purpose)
+      .map(([id, template]) => ({ id, template }));
+  }
+
+  /**
+   * Discover running local providers
+   *
+   * Scans for Ollama (port 11434), LM Studio (port 1234), etc.
+   * Returns providers that are currently running and reachable.
+   *
+   * Example:
+   * ```typescript
+   * const discovery = await setup.discoverLocalProviders();
+   * for (const provider of discovery.providers) {
+   *   if (provider.isReachable) {
+   *     console.log(`Found ${provider.providerId} at ${provider.baseUrl}`);
+   *     console.log(`Models: ${provider.models.map(m => m.id).join(', ')}`);
+   *   }
+   * }
+   * ```
+   */
+  async discoverLocalProviders(options?: {
+    timeoutMs?: number;
+    fetchModels?: boolean;
+  }): Promise<{
+    providers: DiscoveredProvider[];
+    totalFound: number;
+    reachableCount: number;
+    scanDurationMs: number;
+  }> {
+    const discovery = new ModelDiscovery();
+    return discovery.scanLocal(options);
+  }
+
+  /**
+   * Quick check if Ollama is running locally
+   */
+  async isOllamaRunning(baseUrl?: string): Promise<boolean> {
+    const discovery = new ModelDiscovery();
+    return discovery.isOllamaRunning(baseUrl);
+  }
+
+  /**
+   * Quick check if LM Studio is running locally
+   */
+  async isLmStudioRunning(baseUrl?: string): Promise<boolean> {
+    const discovery = new ModelDiscovery();
+    return discovery.isLmStudioRunning(baseUrl);
+  }
+
+  /**
+   * Auto-configure from discovered providers
+   *
+   * Discovers running local providers and automatically configures
+   * endpoints for each discovered model.
+   *
+   * Example:
+   * ```typescript
+   * // Auto-discover and configure all local models
+   * const result = await setup.autoConfigureFromDiscovery(workspaceId);
+   * console.log(`Configured ${result.length} endpoints`);
+   * ```
+   */
+  async autoConfigureFromDiscovery(
+    workspaceId: string,
+    options?: {
+      timeoutMs?: number;
+      testEach?: boolean;
+      testFn?: (endpoint: ModelEndpoint) => Promise<boolean>;
+    }
+  ): Promise<EndpointSetupResult[]> {
+    const discovery = new ModelDiscovery();
+    const scanResult = await discovery.scanLocal({
+      timeoutMs: options?.timeoutMs,
+      fetchModels: true,
+    });
+
+    const results: EndpointSetupResult[] = [];
+
+    for (const provider of scanResult.providers) {
+      if (!provider.isReachable) continue;
+
+      for (const model of provider.models) {
+        // Skip if we already have an endpoint for this provider+model
+        const existing = await this.config.getModelEndpoints(workspaceId);
+        const alreadyExists = existing.some(
+          (ep) => ep.providerId === provider.providerId && ep.modelId === model.id
+        );
+        if (alreadyExists) continue;
+
+        const endpoint: ModelEndpoint = {
+          id: `${provider.providerId}-${model.id}-${Date.now()}`,
+          name: model.name,
+          providerId: provider.providerId,
+          baseUrl: provider.baseUrl,
+          modelId: model.id,
+          purpose: model.purpose || "default",
+          capabilities: model.capabilities || ["streaming"],
+        };
+
+        const result = await this.setupEndpoint(
+          workspaceId,
+          endpoint,
+          options?.testEach ? options.testFn : undefined
+        );
+        results.push(result);
+      }
+    }
+
+    return results;
+  }
+
+  // ========================================================================
+  // Private Helpers
+  // ========================================================================
+
+  private async setupEndpoint(
+    workspaceId: string,
+    endpoint: ModelEndpoint,
+    customTestFn?: (endpoint: ModelEndpoint) => Promise<boolean>
+  ): Promise<EndpointSetupResult> {
+    // Save endpoint first (without testing)
+    await this.config.setModelEndpoint(workspaceId, endpoint);
+
+    // Run test if provided
+    let testResult: EndpointTestState;
+    if (customTestFn) {
+      testResult = await this.config.testModelEndpoint(
+        workspaceId,
+        endpoint.id,
+        customTestFn
+      );
+    } else {
+      // Use default test based on provider
+      testResult = await this.config.testModelEndpoint(
+        workspaceId,
+        endpoint.id,
+        (ep) => this.defaultTest(ep)
+      );
+    }
+
+    return {
+      endpoint,
+      testResult,
+      success: testResult.status === "success",
+    };
+  }
+
+  private async defaultTest(endpoint: ModelEndpoint): Promise<boolean> {
+    // Default test just checks if the URL is reachable
+    // Real implementations would do an actual model inference test
+    try {
+      const response = await fetch(endpoint.baseUrl, {
+        method: "HEAD",
+        signal: AbortSignal.timeout(5000),
+      });
+      return response.ok || response.status === 404; // 404 means server is up but endpoint doesn't exist
+    } catch {
+      // If HEAD fails, try a simple GET (some servers don't support HEAD)
+      try {
+        const response = await fetch(endpoint.baseUrl, {
+          signal: AbortSignal.timeout(5000),
+        });
+        return true; // Any response means server is up
+      } catch {
+        return false;
+      }
+    }
+  }
+}
+
+/**
+ * Create a ModelEndpointSetup instance
+ */
+export function createModelEndpointSetup(config: ConfigManager): ModelEndpointSetup {
+  return new ModelEndpointSetup(config);
+}
+
+================
+File: test/conformance.test.ts
+================
+import { describe, expect, test, beforeAll, afterAll } from "bun:test";
+import {
+  ConfigManager,
+  createConfigManager,
+  createModelEndpointSetup,
+  type ModelEndpoint,
+} from "../src/index.js";
+import type { ModelPurpose } from "@enhancement/types";
+
+// Test database path (isolated for tests)
+const TEST_DATA_DIR = `/tmp/enhancement-config-test-${Date.now()}`;
+
+describe("@enhancement/config conformance", () => {
+  let config: ConfigManager;
+  let setup: ReturnType<typeof createModelEndpointSetup>;
+
+  beforeAll(async () => {
+    config = createConfigManager({ dataDir: TEST_DATA_DIR });
+    await config.initialize();
+    setup = createModelEndpointSetup(config);
+  });
+
+  afterAll(() => {
+    config.close();
+    // Cleanup test directory
+    try {
+      import("node:fs/promises").then((fs) =>
+        fs.rm(TEST_DATA_DIR, { recursive: true, force: true })
+      );
+    } catch {
+      // Ignore cleanup errors
+    }
+  });
+
+  test("exports ConfigManager class", () => {
+    expect(typeof ConfigManager).toBe("function");
+  });
+
+  test("exports createConfigManager factory", () => {
+    expect(typeof createConfigManager).toBe("function");
+  });
+
+  test("exports all required types", () => {
+    // Type exports are compile-time only, but we can verify the structure
+    const endpoint: ModelEndpoint = {
+      id: "test",
+      name: "Test Endpoint",
+      providerId: "ollama",
+      baseUrl: "http://localhost:11434",
+      modelId: "llama3.1",
+      purpose: "default" as ModelPurpose,
+      capabilities: ["streaming"],
+    };
+    expect(endpoint).toBeDefined();
+    expect(endpoint.providerId).toBe("ollama");
+  });
+
+  test("can initialize and get global config", async () => {
+    const global = await config.getGlobalConfig();
+    expect(global).toBeDefined();
+    expect(global.privacy).toBeDefined();
+    expect(global.privacy.telemetry).toBe(false);
+  });
+
+  test("can create a workspace", async () => {
+    const workspaceId = `test-workspace-${Date.now()}`;
+    const workspaceConfig = await config.createWorkspace(
+      workspaceId,
+      "Test Workspace",
+      { description: "For testing" }
+    );
+
+    expect(workspaceConfig.name).toBe("Test Workspace");
+    expect(workspaceConfig.behaviors).toBeDefined();
+    expect(workspaceConfig.behaviors.proactive_suggestions).toBe(false);
+  });
+
+  test("can list workspaces", async () => {
+    const workspaceId = `list-test-${Date.now()}`;
+    await config.createWorkspace(workspaceId, "List Test Workspace");
+
+    const workspaces = await config.listWorkspaces();
+    expect(workspaces.length).toBeGreaterThan(0);
+    expect(workspaces.some((w) => w.id === workspaceId)).toBe(true);
+  });
+
+  test("can set and get model endpoint", async () => {
+    const workspaceId = `endpoint-test-${Date.now()}`;
+    await config.createWorkspace(workspaceId, "Endpoint Test");
+
+    const endpoint: ModelEndpoint = {
+      id: "ollama-llama3",
+      name: "Local Llama 3.1",
+      providerId: "ollama",
+      baseUrl: "http://localhost:11434",
+      modelId: "llama3.1",
+      purpose: "default",
+      capabilities: ["streaming"],
+    };
+
+    await config.setModelEndpoint(workspaceId, endpoint);
+
+    const retrieved = await config.getModelEndpoint(workspaceId, endpoint.id);
+    expect(retrieved).toBeDefined();
+    expect(retrieved?.name).toBe("Local Llama 3.1");
+    expect(retrieved?.providerId).toBe("ollama");
+  });
+
+  test("can list model endpoints", async () => {
+    const workspaceId = `list-endpoints-${Date.now()}`;
+    await config.createWorkspace(workspaceId, "List Endpoints Test");
+
+    // Add multiple endpoints
+    await config.setModelEndpoint(workspaceId, {
+      id: "ollama-1",
+      name: "Ollama 1",
+      providerId: "ollama",
+      baseUrl: "http://localhost:11434",
+      modelId: "llama3.1",
+      purpose: "default",
+      capabilities: [],
+    });
+
+    await config.setModelEndpoint(workspaceId, {
+      id: "openai-1",
+      name: "OpenAI GPT-4",
+      providerId: "openai",
+      baseUrl: "https://api.openai.com/v1",
+      apiKey: "sk-test",
+      modelId: "gpt-4",
+      purpose: "reasoning",
+      capabilities: ["streaming"],
+    });
+
+    const endpoints = await config.getModelEndpoints(workspaceId);
+    expect(endpoints.length).toBe(2);
+  });
+
+  test("can filter endpoints by purpose", async () => {
+    const workspaceId = `purpose-filter-${Date.now()}`;
+    await config.createWorkspace(workspaceId, "Purpose Filter Test");
+
+    await config.setModelEndpoint(workspaceId, {
+      id: "ocr-model",
+      name: "GLM OCR",
+      providerId: "lmstudio",
+      baseUrl: "http://localhost:1234",
+      modelId: "glm-ocr",
+      purpose: "ocr",
+      capabilities: ["vision"],
+    });
+
+    await config.setModelEndpoint(workspaceId, {
+      id: "default-model",
+      name: "Default LLM",
+      providerId: "ollama",
+      baseUrl: "http://localhost:11434",
+      modelId: "llama3.1",
+      purpose: "default",
+      capabilities: [],
+    });
+
+    const ocrEndpoints = await config.getModelEndpoints(workspaceId, "ocr");
+    expect(ocrEndpoints.length).toBe(1);
+    expect(ocrEndpoints[0].purpose).toBe("ocr");
+  });
+
+  test("test endpoint and persist result", async () => {
+    const workspaceId = `test-endpoint-${Date.now()}`;
+    await config.createWorkspace(workspaceId, "Test Endpoint");
+
+    await config.setModelEndpoint(workspaceId, {
+      id: "test-model",
+      name: "Test Model",
+      providerId: "ollama",
+      baseUrl: "http://localhost:11434",
+      modelId: "test",
+      purpose: "default",
+      capabilities: [],
+    });
+
+    // Test with a mock test function
+    const testResult = await config.testModelEndpoint(
+      workspaceId,
+      "test-model",
+      async (endpoint) => {
+        // Simulate successful test
+        return endpoint.baseUrl.includes("localhost");
+      }
+    );
+
+    expect(testResult.status).toBe("success");
+    expect(testResult.latencyMs).toBeDefined();
+    expect(testResult.latencyMs).toBeGreaterThanOrEqual(0);
+
+    // Verify persisted
+    const state = await config.getEndpointTestState(workspaceId, "test-model");
+    expect(state?.status).toBe("success");
+  });
+
+  test("test endpoint failure handling", async () => {
+    const workspaceId = `test-fail-${Date.now()}`;
+    await config.createWorkspace(workspaceId, "Test Fail");
+
+    await config.setModelEndpoint(workspaceId, {
+      id: "fail-model",
+      name: "Fail Model",
+      providerId: "openai",
+      baseUrl: "https://invalid.url",
+      modelId: "gpt-4",
+      purpose: "default",
+      capabilities: [],
+    });
+
+    const testResult = await config.testModelEndpoint(
+      workspaceId,
+      "fail-model",
+      async () => {
+        throw new Error("Connection refused");
+      }
+    );
+
+    expect(testResult.status).toBe("failed");
+    expect(testResult.errorMessage).toBe("Connection refused");
+  });
+
+  test("get ready (tested) endpoints only", async () => {
+    const workspaceId = `ready-test-${Date.now()}`;
+    await config.createWorkspace(workspaceId, "Ready Test");
+
+    // Add tested endpoint
+    await config.setModelEndpoint(workspaceId, {
+      id: "tested",
+      name: "Tested Model",
+      providerId: "ollama",
+      baseUrl: "http://localhost:11434",
+      modelId: "llama3",
+      purpose: "default",
+      capabilities: [],
+    });
+
+    await config.testModelEndpoint(workspaceId, "tested", async () => true);
+
+    // Add untested endpoint
+    await config.setModelEndpoint(workspaceId, {
+      id: "untested",
+      name: "Untested Model",
+      providerId: "openai",
+      baseUrl: "https://api.openai.com",
+      modelId: "gpt-4",
+      purpose: "default",
+      capabilities: [],
+    });
+
+    const ready = await config.getReadyModelEndpoints(workspaceId);
+    expect(ready.length).toBe(1);
+    expect(ready[0].id).toBe("tested");
+  });
+
+  test("resolve endpoint with preferences", async () => {
+    const workspaceId = `resolve-test-${Date.now()}`;
+    await config.createWorkspace(workspaceId, "Resolve Test");
+
+    // Add cloud endpoint
+    await config.setModelEndpoint(workspaceId, {
+      id: "cloud-model",
+      name: "Cloud GPT-4",
+      providerId: "openai",
+      baseUrl: "https://api.openai.com/v1",
+      modelId: "gpt-4",
+      purpose: "default",
+      capabilities: ["streaming"],
+    });
+    await config.testModelEndpoint(workspaceId, "cloud-model", async () => true);
+
+    // Add local endpoint
+    await config.setModelEndpoint(workspaceId, {
+      id: "local-model",
+      name: "Local Llama",
+      providerId: "ollama",
+      baseUrl: "http://localhost:11434",
+      modelId: "llama3.1",
+      purpose: "default",
+      capabilities: ["streaming"],
+    });
+    await config.testModelEndpoint(workspaceId, "local-model", async () => true);
+
+    // Prefer local should return ollama
+    const resolved = await config.resolveModel(workspaceId, "default", {
+      requireTested: true,
+      preferLocal: true,
+    });
+
+    expect(resolved).toBeDefined();
+    expect(resolved?.providerId).toBe("ollama");
+    expect(resolved?.registryId).toBe("ollama:llama3.1");
+    expect(resolved?.endpoint.name).toBe("Local Llama");
+  });
+
+  test("resolveModel returns Vercel AI SDK compatible format", async () => {
+    const workspaceId = `vercel-sdk-test-${Date.now()}`;
+    await config.createWorkspace(workspaceId, "Vercel SDK Test");
+
+    // Add an endpoint
+    await config.setModelEndpoint(workspaceId, {
+      id: "lmstudio-ocr",
+      name: "GLM OCR",
+      providerId: "lmstudio",
+      baseUrl: "http://localhost:1234",
+      modelId: "glm-ocr",
+      purpose: "ocr",
+      capabilities: ["vision"],
+    });
+    await config.testModelEndpoint(workspaceId, "lmstudio-ocr", async () => true);
+
+    // Resolve and verify Vercel AI SDK format
+    const resolved = await config.resolveModel(workspaceId, "ocr");
+
+    expect(resolved).toBeDefined();
+    // registryId format for Vercel AI SDK: "providerId:modelId"
+    expect(resolved?.registryId).toBe("lmstudio:glm-ocr");
+    expect(resolved?.providerId).toBe("lmstudio");
+    expect(resolved?.modelId).toBe("glm-ocr");
+    expect(resolved?.testState?.status).toBe("success");
+    
+    // Can be used with Vercel AI SDK:
+    // const model = registry.languageModel(resolved.registryId);
+    // const { text } = await generateText({ model, prompt: "..." });
+  });
+
+  test("can update global config", async () => {
+    const newConfig = await config.updateGlobalConfig({
+      defaultModel: "my-custom-model",
+    });
+
+    expect(newConfig.defaultModel).toBe("my-custom-model");
+
+    // Verify persisted
+    const retrieved = await config.getGlobalConfig();
+    expect(retrieved.defaultModel).toBe("my-custom-model");
+  });
+
+  test("can save and retrieve workspace config", async () => {
+    const workspaceId = `save-config-${Date.now()}`;
+    await config.createWorkspace(workspaceId, "Save Config Test");
+
+    const workspaceConfig = await config.getWorkspaceConfig(workspaceId);
+    expect(workspaceConfig).toBeDefined();
+
+    // Modify and save
+    workspaceConfig!.name = "Updated Name";
+    workspaceConfig!.behaviors.proactive_suggestions = true;
+    await config.saveWorkspaceConfig(workspaceId, workspaceConfig!);
+
+    // Verify
+    const updated = await config.getWorkspaceConfig(workspaceId);
+    expect(updated?.name).toBe("Updated Name");
+    expect(updated?.behaviors.proactive_suggestions).toBe(true);
+  });
+
+  test("discovery types are exported", () => {
+    // Type exports are compile-time only, but we can verify the structure
+    const discoveredProvider = {
+      providerId: "ollama" as const,
+      baseUrl: "http://localhost:11434",
+      isReachable: true,
+      models: [
+        {
+          id: "llama3.1",
+          name: "Llama 3.1",
+          purpose: "default" as ModelPurpose,
+          capabilities: ["streaming"],
+        },
+      ],
+      latencyMs: 100,
+    };
+    expect(discoveredProvider).toBeDefined();
+    expect(discoveredProvider.providerId).toBe("ollama");
+    expect(discoveredProvider.models[0].id).toBe("llama3.1");
+  });
+
+  test("ModelEndpointSetup has discovery methods", () => {
+    // Verify that setup has discovery methods
+    expect(typeof setup.discoverLocalProviders).toBe("function");
+    expect(typeof setup.isOllamaRunning).toBe("function");
+    expect(typeof setup.isLmStudioRunning).toBe("function");
+    expect(typeof setup.autoConfigureFromDiscovery).toBe("function");
+  });
+});
+
+================
+File: package.json
+================
+{
+  "name": "@enhancement/config",
+  "version": "0.1.0",
+  "type": "module",
+  "description": "Workspace and global configuration management for Enhancement",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
+    }
+  },
+  "scripts": {
+    "build": "tsc",
+    "test": "bun test",
+    "clean": "rm -rf dist"
+  },
+  "dependencies": {
+    "@enhancement/types": "file:../types",
+    "zod": "^3.22.0"
+  },
+  "devDependencies": {
+    "@types/bun": "^1.2.0",
+    "typescript": "^5.4.0"
+  }
+}
+
+================
+File: tsconfig.json
+================
+{
+  "extends": "../../tsconfig.json",
+  "compilerOptions": {
+    "outDir": "./dist",
+    "rootDir": "."
+  },
+  "include": ["src/**/*"],
+  "exclude": ["node_modules", "dist", "test"]
+}
+
+
+
+
+
+================================================================
+End of Codebase
+================================================================

@@ -1,0 +1,25 @@
+{
+  "name": "@enhancement/bus",
+  "version": "0.1.0",
+  "type": "module",
+  "description": "Event bus with bounded queues and merge strategies",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
+    }
+  },
+  "scripts": {
+    "build": "tsc",
+    "test": "bun test",
+    "clean": "rm -rf dist"
+  },
+  "dependencies": {
+    "@enhancement/types": "file:../types",
+    "ulidx": "^2.4.0"
+  },
+  "devDependencies": {
+    "@types/bun": "^1.2.0",
+    "typescript": "^5.4.0"
+  }
+}

@@ -1,0 +1,38 @@
+# Dependencies
+node_modules/
+*.log
+
+# Build outputs
+dist/
+.turbo/
+*.tsbuildinfo
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Test outputs
+coverage/
+*.test-results.json
+
+# Environment
+.env
+.env.local
+.env.*.local
+
+# Temporary files
+tmp/
+temp/
+*.tmp
+
+# Database files (if local)
+*.db
+*.sqlite
+*.sqlite3

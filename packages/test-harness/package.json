@@ -1,0 +1,25 @@
+{
+  "name": "@enhancement/test-harness",
+  "version": "0.1.0",
+  "type": "module",
+  "description": "Test utilities and mocks for Enhancement packages",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
+    }
+  },
+  "scripts": {
+    "build": "tsc",
+    "test": "bun test",
+    "clean": "rm -rf dist"
+  },
+  "dependencies": {
+    "@enhancement/types": "file:../types",
+    "@enhancement/bus": "file:../bus"
+  },
+  "devDependencies": {
+    "@types/bun": "^1.2.0",
+    "typescript": "^5.4.0"
+  }
+}

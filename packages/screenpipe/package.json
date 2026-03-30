@@ -1,0 +1,26 @@
+{
+  "name": "@enhancement/screenpipe",
+  "version": "0.1.0",
+  "type": "module",
+  "description": "Screen/mic capture source publishing to GlobalDataBus with optional store buffering",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
+    }
+  },
+  "scripts": {
+    "build": "tsc",
+    "test": "bun test",
+    "clean": "rm -rf dist"
+  },
+  "dependencies": {
+    "@enhancement/types": "file:../types",
+    "@enhancement/bus": "file:../bus",
+    "@enhancement/store": "file:../store"
+  },
+  "devDependencies": {
+    "@types/bun": "^1.2.0",
+    "typescript": "^5.4.0"
+  }
+}

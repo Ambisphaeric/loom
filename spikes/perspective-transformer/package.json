@@ -1,0 +1,21 @@
+{
+  "name": "@enhancement/spike-perspective-transformer",
+  "version": "0.1.0",
+  "type": "module",
+  "scripts": {
+    "test": "bun run perspective-transformer.ts",
+    "demo": "bun run demo.ts"
+  },
+  "dependencies": {
+    "@enhancement/fabric": "file:../../packages/fabric",
+    "@enhancement/ai-providers": "file:../../packages/ai-providers",
+    "@enhancement/bus": "file:../../packages/bus",
+    "@enhancement/store": "file:../../packages/store",
+    "@enhancement/types": "file:../../packages/types",
+    "ulidx": "^2.4.0"
+  },
+  "devDependencies": {
+    "@types/bun": "latest",
+    "typescript": "^5.0.0"
+  }
+}
