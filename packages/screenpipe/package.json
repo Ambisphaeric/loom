@@ -1,5 +1,5 @@
 {
-  "name": "@enhancement/screenpipe",
+  "name": "@loomai/screenpipe",
   "version": "0.1.0",
   "type": "module",
   "description": "Screen/mic capture source publishing to GlobalDataBus with optional store buffering",
@@ -15,9 +15,9 @@
     "clean": "rm -rf dist"
   },
   "dependencies": {
-    "@enhancement/types": "file:../types",
-    "@enhancement/bus": "file:../bus",
-    "@enhancement/store": "file:../store"
+    "@loomai/types": "file:../types",
+    "@loomai/bus": "file:../bus",
+    "@loomai/store": "file:../store"
   },
   "devDependencies": {
     "@types/bun": "^1.2.0",

@@ -1,5 +1,5 @@
 {
-  "name": "@enhancement/deferred-queue",
+  "name": "@loomai/deferred-queue",
   "version": "0.1.0",
   "type": "module",
   "description": "[act later] functionality for delayed/conditional action execution",
@@ -15,8 +15,8 @@
     "clean": "rm -rf dist"
   },
   "dependencies": {
-    "@enhancement/types": "file:../types",
-    "@enhancement/test-harness": "file:../test-harness"
+    "@loomai/types": "file:../types",
+    "@loomai/test-harness": "file:../test-harness"
   },
   "devDependencies": {
     "@types/bun": "^1.2.0",

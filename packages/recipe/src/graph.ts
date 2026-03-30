@@ -6,7 +6,7 @@ import type {
 	ComputationGraph,
 	MergeStrategy,
 } from "./types.js";
-import type { RawChunk, ContextChunk } from "@enhancement/types";
+import type { RawChunk, ContextChunk } from "@loomai/types";
 
 export class MergeNodeImpl implements MergeNode {
 	id: string;
@@ -175,8 +175,23 @@ export class ComputationGraphImpl implements ComputationGraph {
 	nodes: Map<string, GraphNode> = new Map();
 	edges: Map<string, string[]> = new Map();
 
-	addNode(node: GraphNode): void {
-		this.nodes.set(node.id, node);
+	addNode(node: GraphNode): void;
+	addNode(id: string, execute: (chunks: ContextChunk[]) => Promise<ContextChunk[]>): void;
+	addNode(nodeOrId: GraphNode | string, executeFn?: (chunks: ContextChunk[]) => Promise<ContextChunk[]>): void {
+		if (typeof nodeOrId === "string" && executeFn) {
+			// Convenience overload: addNode(id, executeFn)
+			const node: GraphNode = {
+				id: nodeOrId,
+				type: "custom",
+				inputs: [],
+				outputs: [],
+				execute: executeFn,
+			};
+			this.nodes.set(nodeOrId, node);
+		} else if (typeof nodeOrId === "object") {
+			// Standard overload: addNode(node)
+			this.nodes.set(nodeOrId.id, nodeOrId);
+		}
 	}
 
 	addEdge(from: string, to: string): void {
@@ -245,17 +260,97 @@ export class ComputationGraphImpl implements ComputationGraph {
 		return false;
 	}
 
-	async execute(nodeId: string, input: ContextChunk[]): Promise<ContextChunk[]> {
-		const node = this.nodes.get(nodeId);
-		if (!node) {
-			throw new Error(`Node not found: ${nodeId}`);
+	async execute(nodeIdOrOptions?: string | { maxConcurrency?: number }, input?: ContextChunk[]): Promise<ContextChunk[]> {
+		// Overload: execute(nodeId, input) - execute specific node
+		if (typeof nodeIdOrOptions === "string") {
+			const node = this.nodes.get(nodeIdOrOptions);
+			if (!node) {
+				throw new Error(`Node not found: ${nodeIdOrOptions}`);
+			}
+
+			if (!node.execute) {
+				throw new Error(`Node ${nodeIdOrOptions} does not have an execute function`);
+			}
+
+			return await node.execute(input || []);
 		}
 
-		if (!node.execute) {
-			throw new Error(`Node ${nodeId} does not have an execute function`);
+		// Overload: execute(options?) - execute entire graph
+		const options = nodeIdOrOptions || {};
+		const maxConcurrency = options.maxConcurrency || Infinity;
+		
+		// Execute nodes in topological order sequentially
+		const order = this.topologicalSort();
+		if (order.length === 0) {
+			return [];
 		}
 
-		return await node.execute(input);
+		// Track results for each node
+		const results = new Map<string, ContextChunk[]>();
+		
+		// Track which nodes are ready (all dependencies completed)
+		const completed = new Set<string>();
+		
+		// Execute in batches respecting dependencies
+		let remaining = [...order];
+		
+		while (remaining.length > 0) {
+			// Find nodes that are ready (all dependencies completed or no dependencies)
+			const ready: string[] = [];
+			const stillWaiting: string[] = [];
+			
+			for (const nodeId of remaining) {
+				// Find all nodes that depend on this one (incoming edges reversed)
+				const dependencies: string[] = [];
+				for (const [from, toList] of this.edges) {
+					if (toList.includes(nodeId)) {
+						dependencies.push(from);
+					}
+				}
+				
+				const allDepsCompleted = dependencies.every(dep => completed.has(dep));
+				if (allDepsCompleted) {
+					ready.push(nodeId);
+				} else {
+					stillWaiting.push(nodeId);
+				}
+			}
+			
+			if (ready.length === 0 && stillWaiting.length > 0) {
+				// Cycle detected - shouldn't happen since we checked hasCycle
+				throw new Error("Graph has circular dependencies");
+			}
+			
+			// Execute ready nodes with concurrency limit
+			const toExecute = ready.slice(0, maxConcurrency);
+			const batchPromises = toExecute.map(async (nodeId) => {
+				const node = this.nodes.get(nodeId);
+				if (!node || !node.execute) return;
+
+				// Collect inputs from dependencies
+				const nodeInput: ContextChunk[] = [];
+				for (const [from, toList] of this.edges) {
+					if (toList.includes(nodeId)) {
+						const fromResult = results.get(from);
+						if (fromResult) {
+							nodeInput.push(...fromResult);
+						}
+					}
+				}
+
+				const output = await node.execute(nodeInput);
+				results.set(nodeId, output);
+				completed.add(nodeId);
+			});
+			
+			await Promise.all(batchPromises);
+			
+			// Update remaining for next iteration
+			remaining = stillWaiting;
+		}
+
+		// Return results from all nodes
+		return [...results.values()].flat();
 	}
 }
 

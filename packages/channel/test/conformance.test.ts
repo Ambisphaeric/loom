@@ -197,9 +197,12 @@ describe("ChannelManager", () => {
 	describe("registration", () => {
 		it("should register a channel", () => {
 			const registration: ChannelRegistration = {
+				id: "test-channel",
 				name: "test-channel",
 				version: "1.0.0",
 				factory: async () => new MockChannel(),
+				supportedContentTypes: ["text/plain"],
+				capabilities: DEFAULT_CHANNEL_CAPABILITIES,
 			};
 
 			manager.register(registration);
@@ -208,9 +211,12 @@ describe("ChannelManager", () => {
 
 		it("should unregister a channel", () => {
 			const registration: ChannelRegistration = {
+				id: "test-channel",
 				name: "test-channel",
 				version: "1.0.0",
 				factory: async () => new MockChannel(),
+				supportedContentTypes: ["text/plain"],
+				capabilities: DEFAULT_CHANNEL_CAPABILITIES,
 			};
 
 			manager.register(registration);
@@ -226,9 +232,12 @@ describe("ChannelManager", () => {
 	describe("getOrCreate", () => {
 		it("should create channel from registration", async () => {
 			const registration: ChannelRegistration = {
+				id: "test-channel",
 				name: "test-channel",
 				version: "1.0.0",
 				factory: async () => new MockChannel(),
+				supportedContentTypes: ["text/plain"],
+				capabilities: DEFAULT_CHANNEL_CAPABILITIES,
 			};
 
 			manager.register(registration);
@@ -245,9 +254,12 @@ describe("ChannelManager", () => {
 
 		it("should return existing channel on subsequent calls", async () => {
 			const registration: ChannelRegistration = {
+				id: "test-channel",
 				name: "test-channel",
 				version: "1.0.0",
 				factory: async () => new MockChannel(),
+				supportedContentTypes: ["text/plain"],
+				capabilities: DEFAULT_CHANNEL_CAPABILITIES,
 			};
 
 			manager.register(registration);
@@ -261,14 +273,20 @@ describe("ChannelManager", () => {
 	describe("getAll", () => {
 		it("should return all initialized channels", async () => {
 			const registration1: ChannelRegistration = {
+				id: "channel-1",
 				name: "channel-1",
 				version: "1.0.0",
 				factory: async () => new MockChannel(),
+				supportedContentTypes: ["text/plain"],
+				capabilities: DEFAULT_CHANNEL_CAPABILITIES,
 			};
 			const registration2: ChannelRegistration = {
+				id: "channel-2",
 				name: "channel-2",
 				version: "1.0.0",
 				factory: async () => new MockChannel(),
+				supportedContentTypes: ["text/plain"],
+				capabilities: DEFAULT_CHANNEL_CAPABILITIES,
 			};
 
 			manager.register(registration1);
@@ -288,9 +306,12 @@ describe("ChannelManager", () => {
 			manager.onEvent((event) => events.push(event as { type: string }));
 
 			const registration: ChannelRegistration = {
+				id: "test-channel",
 				name: "test-channel",
 				version: "1.0.0",
 				factory: async () => new MockChannel(),
+				supportedContentTypes: ["text/plain"],
+				capabilities: DEFAULT_CHANNEL_CAPABILITIES,
 			};
 
 			manager.register(registration);
@@ -308,9 +329,12 @@ describe("ChannelManager", () => {
 			manager.offEvent(handler);
 
 			manager.register({
+				id: "test",
 				name: "test",
 				version: "1.0.0",
 				factory: async () => new MockChannel(),
+				supportedContentTypes: ["text/plain"],
+				capabilities: DEFAULT_CHANNEL_CAPABILITIES,
 			});
 
 			expect(events.length).toBe(0);

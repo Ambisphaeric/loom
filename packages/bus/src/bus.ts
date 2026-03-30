@@ -1,7 +1,7 @@
 import { ulid } from "ulidx";
-import type { MergeStrategy } from "../../types/src/index.js";
-import type { Bus, BusHandler, ContextChunk, RawChunk } from "../../types/src/index.js";
-import { DEFAULT_BUS_CAPACITY, MAX_GENERATION } from "../../types/src/index.js";
+import type { MergeStrategy } from "@loomai/types";
+import type { Bus, BusHandler, ContextChunk, RawChunk } from "@loomai/types";
+import { DEFAULT_BUS_CAPACITY, MAX_GENERATION } from "@loomai/types";
 
 interface QueueEntry {
 	chunk: RawChunk;

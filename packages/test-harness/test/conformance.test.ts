@@ -1,8 +1,8 @@
 import { describe, expect, test } from "bun:test";
 import { MockCredentialProvider, MockDatabase, makeChunk, makeContextChunk } from "../src/index.js";
-import type { RawChunk, ContextChunk } from "../../types/src/index.js";
+import type { RawChunk, ContextChunk } from "@loomai/types";
 
-describe("@enhancement/test-harness conformance", () => {
+describe("@loomai/test-harness conformance", () => {
 	test("exports makeChunk helper", () => {
 		const chunk = makeChunk();
 		expect(chunk.kind).toBe("raw");

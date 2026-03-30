@@ -1,5 +1,5 @@
 {
-  "name": "@enhancement/channel",
+  "name": "@loomai/channel",
   "version": "0.1.0",
   "type": "module",
   "description": "Base for output surfaces (WhatsApp, Telegram, email, etc.)",
@@ -15,8 +15,8 @@
     "clean": "rm -rf dist"
   },
   "dependencies": {
-    "@enhancement/types": "file:../types",
-    "@enhancement/bus": "file:../bus",
+    "@loomai/types": "file:../types",
+    "@loomai/bus": "file:../bus",
     "ulidx": "^2.3.0"
   },
   "devDependencies": {

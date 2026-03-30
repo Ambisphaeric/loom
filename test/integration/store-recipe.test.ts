@@ -5,9 +5,9 @@
  */
 
 import { expect, test, describe, beforeEach, afterEach } from "bun:test";
-import { EnhancementStore, createStore, createSessionStore } from "@enhancement/store";
-import { RecipeExecutor, createRecipeExecutor } from "@enhancement/recipe";
-import type { Recipe, ContextChunk } from "@enhancement/recipe";
+import { EnhancementStore, createStore, createSessionStore } from "@loomai/store";
+import { RecipeExecutor, createRecipeExecutor } from "@loomai/recipe";
+import type { Recipe, ContextChunk } from "@loomai/recipe";
 
 const generateId = () => `id-${Date.now()}-${Math.random().toString(36).slice(2, 11)}`;
 

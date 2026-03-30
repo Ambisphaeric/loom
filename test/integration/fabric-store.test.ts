@@ -5,9 +5,9 @@
  */
 
 import { expect, test, describe, beforeEach, afterEach } from "bun:test";
-import { FabricTransformer, createFabricTransformer } from "@enhancement/fabric";
-import { EnhancementStore, createStore } from "@enhancement/store";
-import type { ContextChunk } from "@enhancement/types";
+import { FabricTransformer, createFabricTransformer } from "@loomai/fabric";
+import { EnhancementStore, createStore } from "@loomai/store";
+import type { ContextChunk } from "@loomai/types";
 
 const generateId = () => `id-${Date.now()}-${Math.random().toString(36).slice(2, 11)}`;
 

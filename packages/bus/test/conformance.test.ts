@@ -1,7 +1,7 @@
 import { describe, expect, test } from "bun:test";
 import { EnhancementBus, MergeQueue } from "../src/index.js";
-import type { RawChunk } from "../../types/src/index.js";
-import type { MergeStrategy } from "../../types/src/index.js";
+import type { RawChunk } from "@loomai/types";
+import type { MergeStrategy } from "@loomai/types";
 
 function makeChunk(overrides: Partial<RawChunk> = {}): RawChunk {
 	return {

@@ -8,7 +8,7 @@ import type {
 	StepExecutionContext,
 	StepKind,
 } from "./types.js";
-import type { ContextChunk } from "@enhancement/types";
+import type { ContextChunk } from "@loomai/types";
 import {
 	ComputationGraphImpl,
 	createMergeNode,

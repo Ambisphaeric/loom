@@ -5,9 +5,9 @@
  */
 
 import { expect, test, describe, beforeEach } from "bun:test";
-import { CronScheduler, createCronScheduler } from "@enhancement/cron";
-import { RecipeExecutor, createRecipeExecutor } from "@enhancement/recipe";
-import type { Recipe, RecipeStep } from "@enhancement/recipe";
+import { CronScheduler, createCronScheduler } from "@loomai/cron";
+import { RecipeExecutor, createRecipeExecutor } from "@loomai/recipe";
+import type { Recipe, RecipeStep } from "@loomai/recipe";
 
 describe("Cron + Recipe Integration", () => {
   let scheduler: CronScheduler;

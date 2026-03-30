@@ -8,7 +8,7 @@ import {
 	JoinError,
 	JoinSynchronizer,
 } from "../src/index.js";
-import type { RawChunk } from "../../types/src/index.js";
+import type { RawChunk } from "@loomai/types";
 
 // --- Test Helpers ---
 

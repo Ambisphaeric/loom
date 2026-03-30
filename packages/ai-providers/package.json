@@ -1,5 +1,5 @@
 {
-  "name": "@enhancement/ai-providers",
+  "name": "@loomai/ai-providers",
   "version": "0.1.0",
   "type": "module",
   "description": "Vercel AI SDK-style provider registry for local and remote LLM providers",
@@ -15,8 +15,8 @@
     "clean": "rm -rf dist"
   },
   "dependencies": {
-    "@enhancement/types": "file:../types",
-    "@enhancement/config": "file:../config"
+    "@loomai/types": "file:../types",
+    "@loomai/config": "file:../config"
   },
   "devDependencies": {
     "bun-types": "^1.3.11",

@@ -67,14 +67,15 @@ describe("CronScheduler", () => {
 				cronExpression: "*/5 * * * *",
 			};
 
-			const schedule = scheduler.createSchedule("recipe-1", options);
-			const nextRun = new Date(schedule.nextRun!);
-			const now = new Date();
+		const schedule = scheduler.createSchedule("recipe-1", options);
+		const nextRun = new Date(schedule.nextRun!);
+		const now = new Date();
 
-			expect(nextRun.getTime()).toBeGreaterThan(now.getTime());
-			expect(nextRun.getMinutes() % 5).toBe(0);
-			expect(nextRun.getSeconds()).toBe(0);
-		});
+		// Allow 1 second buffer for processing time
+		expect(nextRun.getTime()).toBeGreaterThanOrEqual(now.getTime() - 1000);
+		expect(nextRun.getMinutes() % 5).toBe(0);
+		expect(nextRun.getSeconds()).toBe(0);
+	});
 	});
 
 	describe("schedule management", () => {

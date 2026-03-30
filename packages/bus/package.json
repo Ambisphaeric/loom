@@ -1,5 +1,5 @@
 {
-  "name": "@enhancement/bus",
+  "name": "@loomai/bus",
   "version": "0.1.0",
   "type": "module",
   "description": "Event bus with bounded queues and merge strategies",
@@ -15,7 +15,7 @@
     "clean": "rm -rf dist"
   },
   "dependencies": {
-    "@enhancement/types": "file:../types",
+    "@loomai/types": "file:../types",
     "ulidx": "^2.4.0"
   },
   "devDependencies": {

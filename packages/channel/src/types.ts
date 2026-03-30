@@ -64,6 +64,7 @@ export interface ChannelSendOptions {
 	expiresAt?: number;
 	replyTo?: string;
 	threadId?: string;
+	sessionId?: string;
 	metadata?: Record<string, unknown>;
 }
 
@@ -103,26 +104,41 @@ export interface Channel {
 }
 
 export interface ChannelRegistration {
+	id: string;
 	name: string;
-	version: string;
-	factory: (config?: ChannelConfig) => Promise<Channel>;
+	version?: string;
+	factory?: (config?: ChannelConfig) => Promise<Channel>;
+	supportedContentTypes: string[];
+	capabilities: ChannelCapabilities;
+	renderer?: { render: (content: unknown) => Promise<string> };
 	description?: string;
 }
 
 export interface ChannelManager {
 	register(registration: ChannelRegistration): void;
-	unregister(name: string): boolean;
+	unregister(id: string): boolean;
 	get(name: string): Channel | undefined;
 	getAll(): Channel[];
 	getSupportedChannels(): string[];
+	onEvent(handler: ChannelEventHandler): void;
+	offEvent(handler: ChannelEventHandler): void;
+	send(
+		channelId: string,
+		message: { contentType: string; content: unknown; workspace: string; sessionId: string; metadata: Record<string, unknown> }
+	): Promise<{ success: boolean; messageId?: string; error?: string }>;
+	sendBatch(
+		channelId: string,
+		messages: Array<{ contentType: string; content: unknown; workspace: string; sessionId: string; metadata: Record<string, unknown> }>
+	): Promise<Array<{ success: boolean; messageId?: string; error?: string }>>;
 }
 
 export type ChannelEvent =
-	| { type: "message_sent"; channel: string; messageId: string; recipientId: string }
-	| { type: "message_failed"; channel: string; error: string; recipientId: string }
-	| { type: "batch_completed"; channel: string; succeeded: number; failed: number }
-	| { type: "channel_registered"; name: string }
-	| { type: "channel_unregistered"; name: string };
+	| { type: "message_sent"; channel: string; id: string; messageId?: string; recipientId?: string }
+	| { type: "message_failed"; channel: string; id: string; error: string; recipientId?: string }
+	| { type: "send_failed"; channel: string; id: string; error: string }
+	| { type: "batch_completed"; channel: string; id: string; succeeded?: number; failed?: number }
+	| { type: "channel_registered"; name: string; id: string }
+	| { type: "channel_unregistered"; name: string; id: string };
 
 export interface ChannelEventHandler {
 	(event: ChannelEvent): void;

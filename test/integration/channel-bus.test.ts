@@ -5,8 +5,8 @@
  */
 
 import { expect, test, describe, beforeEach } from "bun:test";
-import { EnhancementBus } from "@enhancement/bus";
-import { createChannelManager, BaseChannel } from "@enhancement/channel";
+import { EnhancementBus } from "@loomai/bus";
+import { createChannelManager, BaseChannel } from "@loomai/channel";
 import type {
   Channel,
   ChannelConfig,
@@ -15,7 +15,7 @@ import type {
   OutputPrimitive,
   ChannelCapabilities,
   ChannelSendOptions,
-} from "@enhancement/channel";
+} from "@loomai/channel";
 
 // Mock channel for testing
 class MockTestChannel extends BaseChannel {

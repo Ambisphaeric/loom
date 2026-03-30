@@ -39,5 +39,9 @@
   "engines": {
     "node": ">=18"
   },
-  "packageManager": "bun@1.1.0"
+  "packageManager": "bun@1.1.0",
+  "dependencies": {
+    "@hono/node-server": "^1.19.11",
+    "hono": "^4.12.9"
+  }
 }

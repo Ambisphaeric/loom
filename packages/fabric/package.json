@@ -1,5 +1,5 @@
 {
-  "name": "@enhancement/fabric",
+  "name": "@loomai/fabric",
   "version": "0.2.0",
   "type": "module",
   "description": "Fabric patterns for AI-powered text transformations - works with any OpenAI-compatible API (LM Studio, Ollama, etc.)",
@@ -19,7 +19,7 @@
     "clean": "rm -rf dist"
   },
   "dependencies": {
-    "@enhancement/types": "file:../types",
+    "@loomai/types": "file:../types",
     "ulidx": "^2.0.0"
   },
   "devDependencies": {

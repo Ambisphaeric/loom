@@ -3,8 +3,8 @@ import type {
 	CredentialEntry,
 	CredentialMetadata,
 	CredentialType,
-} from "../../types/src/index.js";
-import type { Database } from "../../deferred-queue/src/deferred-queue.js";
+} from "@loomai/types";
+import type { Database } from "@loomai/deferred-queue";
 
 export class MockCredentialProvider implements CredentialProvider {
 	private credentials: Map<string, string> = new Map();

@@ -8,9 +8,9 @@ import {
 	createTimeoutJoin,
 	createFirstWinsJoin,
 } from "../src/index.js";
-import type { JoinStrategy } from "../../types/src/index.js";
+import type { JoinStrategy } from "@loomai/types";
 
-describe("@enhancement/join-synchronizer conformance", () => {
+describe("@loomai/join-synchronizer conformance", () => {
 	test("exports JoinSynchronizer", () => {
 		expect(JoinSynchronizer).toBeDefined();
 		expect(typeof JoinSynchronizer).toBe("function");

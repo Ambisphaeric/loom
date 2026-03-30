@@ -1,5 +1,5 @@
 {
-  "name": "@enhancement/config",
+  "name": "@loomai/config",
   "version": "0.1.0",
   "type": "module",
   "description": "Workspace and global configuration management for Enhancement",
@@ -15,7 +15,7 @@
     "clean": "rm -rf dist"
   },
   "dependencies": {
-    "@enhancement/types": "file:../types",
+    "@loomai/types": "file:../types",
     "zod": "^3.22.0"
   },
   "devDependencies": {

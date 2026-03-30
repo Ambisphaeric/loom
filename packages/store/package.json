@@ -1,5 +1,5 @@
 {
-  "name": "@enhancement/store",
+  "name": "@loomai/store",
   "version": "0.1.0",
   "type": "module",
   "description": "Persistent storage with pluggable vector engine (zvec default, sqlite-vec, chroma)",
@@ -15,8 +15,8 @@
     "clean": "rm -rf dist"
   },
   "dependencies": {
-    "@enhancement/types": "file:../types",
-    "@enhancement/config": "file:../config",
+    "@loomai/types": "file:../types",
+    "@loomai/config": "file:../config",
     "ulidx": "^2.4.0",
     "zod": "^3.22.0"
   },

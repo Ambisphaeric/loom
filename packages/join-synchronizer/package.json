@@ -1,5 +1,5 @@
 {
-  "name": "@enhancement/join-synchronizer",
+  "name": "@loomai/join-synchronizer",
   "version": "0.1.0",
   "type": "module",
   "description": "Parallel branch coordination with join strategies",
@@ -15,7 +15,7 @@
     "clean": "rm -rf dist"
   },
   "dependencies": {
-    "@enhancement/types": "file:../types"
+    "@loomai/types": "file:../types"
   },
   "devDependencies": {
     "@types/bun": "^1.2.0",

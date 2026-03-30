@@ -1,5 +1,5 @@
 {
-  "name": "@enhancement/types",
+  "name": "@loomai/types",
   "version": "0.1.0",
   "type": "module",
   "description": "Core type system for the Enhancement platform",

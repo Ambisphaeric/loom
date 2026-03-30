@@ -1,7 +1,7 @@
 import { describe, expect, test } from "bun:test";
 import { EnhancementBus } from "../src/index.js";
-import type { ContextChunk, RawChunk } from "../../types/src/index.js";
-import { MAX_GENERATION } from "../../types/src/index.js";
+import type { ContextChunk, RawChunk } from "@loomai/types";
+import { MAX_GENERATION } from "@loomai/types";
 
 function makeChunk(overrides: Partial<RawChunk> = {}): RawChunk {
 	return {

@@ -7,6 +7,35 @@ import type {
 } from "./types.js";
 import { encryptValue, decryptValue, generateCredentialId, secureClear, generateMasterKey } from "./encryption.js";
 
+// Workspace ID validation for security
+const WORKSPACE_ID_PATTERN = /^[a-z0-9_-]{1,32}$/;
+
+export class InvalidWorkspaceIdError extends Error {
+	constructor(id: string) {
+		super(
+			`Workspace ID "${id}" is invalid. Use 1-32 characters: lowercase letters, numbers, underscores, or hyphens.`
+		);
+		this.name = "InvalidWorkspaceIdError";
+	}
+}
+
+function validateWorkspaceId(id: string): void {
+	if (!WORKSPACE_ID_PATTERN.test(id)) {
+		throw new InvalidWorkspaceIdError(id);
+	}
+}
+
+function validateWorkspaceAccess(workspaceAccess: string): string[] {
+	if (workspaceAccess === "*") {
+		return ["*"];
+	}
+	const ids = workspaceAccess.split(",").map(id => id.trim()).filter(id => id.length > 0);
+	for (const id of ids) {
+		validateWorkspaceId(id);
+	}
+	return ids;
+}
+
 interface StoredCredential {
 	id: string;
 	service: string;
@@ -99,15 +128,18 @@ export class LocalCredentialProvider implements CredentialProvider {
 	}
 
 	async get(service: string, account: string = "default"): Promise<string | null> {
+		// Validate workspace ID on first access
+		validateWorkspaceId(this.workspace);
+		
 		const stored = this.store.getByService(service, account);
 		if (!stored || stored.isEnabled !== 1) {
 			return null;
 		}
 
 		if (stored.workspaceAccess !== "*") {
-			const allowed = stored.workspaceAccess.split(",");
+			const allowed = validateWorkspaceAccess(stored.workspaceAccess);
 			if (!allowed.includes(this.workspace)) {
-				throw new Error(`Workspace ${this.workspace} not authorized`);
+				return null; // Return null for unauthorized workspace
 			}
 		}
 

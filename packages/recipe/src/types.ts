@@ -1,4 +1,4 @@
-import type { ContextChunk } from "@enhancement/types";
+import type { ContextChunk } from "@loomai/types";
 
 export type StepKind =
 	| "gather"

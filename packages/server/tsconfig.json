@@ -1,0 +1,17 @@
+{
+  "extends": "../../tsconfig.json",
+  "compilerOptions": {
+    "outDir": "./dist",
+    "types": ["bun", "node"],
+    "baseUrl": ".",
+    "paths": {
+      "@loomai/types": ["../types/dist/index.js"],
+      "@loomai/bus": ["../bus/dist/index.js"],
+      "@loomai/recipe": ["../recipe/dist/index.js"],
+      "@loomai/credentials": ["../credentials/dist/index.js"],
+      "@loomai/store": ["../store/dist/index.js"]
+    }
+  },
+  "include": ["src/**/*"],
+  "exclude": ["dist", "node_modules", "test"]
+}

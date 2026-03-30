@@ -1,5 +1,5 @@
 {
-  "name": "@enhancement/recipe",
+  "name": "@loomai/recipe",
   "version": "0.1.0",
   "type": "module",
   "description": "Recipe execution engine with GOETEA-C steps and ComputationGraph",
@@ -15,10 +15,10 @@
     "clean": "rm -rf dist"
   },
   "dependencies": {
-    "@enhancement/types": "file:../types",
-    "@enhancement/bus": "file:../bus",
-    "@enhancement/store": "file:../store",
-    "@enhancement/ai-providers": "file:../ai-providers",
+    "@loomai/types": "file:../types",
+    "@loomai/bus": "file:../bus",
+    "@loomai/store": "file:../store",
+    "@loomai/ai-providers": "file:../ai-providers",
     "ulidx": "^2.3.0"
   },
   "devDependencies": {

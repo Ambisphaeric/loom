@@ -1,5 +1,5 @@
 {
-  "name": "@enhancement/cron",
+  "name": "@loomai/cron",
   "version": "0.1.0",
   "type": "module",
   "description": "Cron scheduler for recurring recipe execution",
@@ -15,9 +15,9 @@
     "clean": "rm -rf dist"
   },
   "dependencies": {
-    "@enhancement/types": "file:../types",
-    "@enhancement/recipe": "file:../recipe",
-    "@enhancement/bus": "file:../bus",
+    "@loomai/types": "file:../types",
+    "@loomai/recipe": "file:../recipe",
+    "@loomai/bus": "file:../bus",
     "ulidx": "^2.3.0"
   },
   "devDependencies": {

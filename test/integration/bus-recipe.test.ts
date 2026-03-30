@@ -5,9 +5,9 @@
  */
 
 import { expect, test, describe, beforeEach } from "bun:test";
-import { EnhancementBus } from "@enhancement/bus";
-import { RecipeExecutor, createRecipeExecutor } from "@enhancement/recipe";
-import type { Recipe, ContextChunk } from "@enhancement/recipe";
+import { EnhancementBus } from "@loomai/bus";
+import { RecipeExecutor, createRecipeExecutor } from "@loomai/recipe";
+import type { Recipe, ContextChunk } from "@loomai/recipe";
 
 const generateId = () => `id-${Date.now()}-${Math.random().toString(36).slice(2, 11)}`;
 

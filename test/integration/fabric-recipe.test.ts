@@ -10,9 +10,9 @@ import {
   createFabricTransformer,
   getDefaultPatterns,
   getPatternsByCategory,
-} from "@enhancement/fabric";
-import { RecipeExecutor, createRecipeExecutor } from "@enhancement/recipe";
-import type { Recipe, RecipeStep, ContextChunk } from "@enhancement/recipe";
+} from "@loomai/fabric";
+import { RecipeExecutor, createRecipeExecutor } from "@loomai/recipe";
+import type { Recipe, RecipeStep, ContextChunk } from "@loomai/recipe";
 
 describe("Fabric + Recipe Integration", () => {
   let fabric: FabricTransformer;
@@ -435,7 +435,7 @@ describe("Fabric + Recipe Integration", () => {
 describe("Fabric + Recipe Advanced Integration", () => {
   test("should use fabric in computation graph", async () => {
     const { createComputationGraph, createMergeNode } = await import(
-      "@enhancement/recipe"
+      "@loomai/recipe"
     );
 
     const fabric1 = createFabricTransformer({

@@ -1,0 +1,29 @@
+{
+  "name": "@loomai/server",
+  "version": "0.1.0",
+  "type": "module",
+  "description": "WebSocket/HTTP API server for the Loom AI platform",
+  "exports": {
+    ".": {
+      "types": "./src/index.ts",
+      "import": "./src/index.ts"
+    }
+  },
+  "scripts": {
+    "build": "echo 'Source-only package, no build step needed'",
+    "test": "bun test",
+    "clean": "rm -rf dist"
+  },
+  "dependencies": {
+    "@loomai/types": "file:../types",
+    "@loomai/bus": "file:../bus",
+    "@loomai/recipe": "file:../recipe",
+    "@loomai/credentials": "file:../credentials",
+    "@loomai/store": "file:../store",
+    "hono": "^4.0.0"
+  },
+  "devDependencies": {
+    "@types/bun": "^1.2.0",
+    "typescript": "^5.4.0"
+  }
+}

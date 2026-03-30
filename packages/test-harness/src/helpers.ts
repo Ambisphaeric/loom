@@ -1,4 +1,4 @@
-import type { RawChunk, ContextChunk } from "../../types/src/index.js";
+import type { RawChunk, ContextChunk } from "@loomai/types";
 
 export function makeChunk(overrides: Partial<RawChunk> = {}): RawChunk {
 	return {
