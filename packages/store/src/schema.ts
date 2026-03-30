@@ -58,7 +58,7 @@ export interface Database {
 }
 
 export interface Statement {
-	run(...params: unknown[]): void;
+	run(...params: unknown[]): { changes: number; lastInsertRowid: number | bigint };
 	all(...params: unknown[]): unknown[];
 	get(...params: unknown[]): unknown;
 }

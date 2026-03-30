@@ -1,5 +1,5 @@
 // HTTP Middleware for Loom Server
-// Auth, rate limiting, CORS, workspace isolation
+// Auth, rate limiting, CORS, workspace isolation, credential validation
 
 import type { Context, Next } from "hono";
 import type { ServerConfig } from "../types.js";
@@ -23,19 +23,50 @@ export function createAuthMiddleware(config: ServerConfig) {
     }
 
     try {
-      // TODO: Validate token against credentials provider
-      // Extract workspace from token or use explicit header
+      // Validate token against credentials provider
       const workspace = c.req.header("X-Workspace") || "default";
       
+      // Check if token credential exists and is valid
+      const tokenCredential = config.credentials.get("api-token", token, workspace);
+      if (!tokenCredential) {
+        throw new AuthenticationError("Invalid or expired token");
+      }
+
       // Attach to context for downstream use
       c.set("workspace", workspace);
       c.set("token", token);
+      c.set("credentials", config.credentials);
       
       await next();
     } catch (error) {
       if (error instanceof AuthenticationError) {
         return c.json({ error: error.message }, 401);
       }
+      if (error instanceof AuthorizationError) {
+        return c.json({ error: error.message }, 403);
+      }
+      throw error;
+    }
+  };
+}
+
+// ============================================================================
+// Workspace Validation Middleware
+// ============================================================================
+
+export function createWorkspaceMiddleware(config: ServerConfig) {
+  return async function workspaceMiddleware(c: Context, next: Next) {
+    const workspace = c.get("workspace") || c.req.header("X-Workspace") || "default";
+    
+    // Validate workspace exists in store
+    try {
+      const workspaceData = await config.store.getWorkspace(workspace);
+      if (!workspaceData) {
+        throw new AuthorizationError(workspace);
+      }
+      c.set("workspace", workspace);
+      await next();
+    } catch (error) {
       if (error instanceof AuthorizationError) {
         return c.json({ error: error.message }, 403);
       }

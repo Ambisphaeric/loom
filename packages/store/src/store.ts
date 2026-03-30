@@ -118,6 +118,52 @@ export class EnhancementStore {
 		this.db.exec(`
 			CREATE INDEX IF NOT EXISTS idx_rag_docs_session ON rag_docs(session_id)
 		`);
+
+		// Workspace management table
+		this.db.exec(`
+			CREATE TABLE IF NOT EXISTS workspaces (
+				id TEXT PRIMARY KEY,
+				name TEXT NOT NULL,
+				description TEXT,
+				created_at INTEGER NOT NULL,
+				updated_at INTEGER NOT NULL
+			)
+		`);
+
+		// Session management table
+		this.db.exec(`
+			CREATE TABLE IF NOT EXISTS sessions (
+				id TEXT PRIMARY KEY,
+				workspace TEXT NOT NULL,
+				recipe_id TEXT,
+				run_id TEXT,
+				status TEXT NOT NULL DEFAULT 'idle',
+				created_at INTEGER NOT NULL,
+				updated_at INTEGER NOT NULL,
+				FOREIGN KEY (workspace) REFERENCES workspaces(id) ON DELETE CASCADE
+			)
+		`);
+
+		// Recipe storage table
+		this.db.exec(`
+			CREATE TABLE IF NOT EXISTS recipes (
+				id TEXT PRIMARY KEY,
+				workspace TEXT NOT NULL,
+				name TEXT NOT NULL,
+				description TEXT,
+				steps TEXT NOT NULL, -- JSON array
+				created_at INTEGER NOT NULL,
+				updated_at INTEGER NOT NULL,
+				FOREIGN KEY (workspace) REFERENCES workspaces(id) ON DELETE CASCADE
+			)
+		`);
+
+		this.db.exec(`
+			CREATE INDEX IF NOT EXISTS idx_sessions_workspace ON sessions(workspace)
+		`);
+		this.db.exec(`
+			CREATE INDEX IF NOT EXISTS idx_recipes_workspace ON recipes(workspace)
+		`);
 	}
 
 	async store(chunk: ContextChunk): Promise<void> {
@@ -354,6 +400,243 @@ export class EnhancementStore {
 			this.db.close();
 		}
 		this.isInitialized = false;
+	}
+
+	// ============================================================================
+	// Workspace Management
+	// ============================================================================
+
+	async listWorkspaces(): Promise<Array<{ id: string; name: string; description?: string; createdAt: number; updatedAt: number }>> {
+		const rows = this.db.prepare(`
+			SELECT id, name, description, created_at, updated_at FROM workspaces ORDER BY created_at DESC
+		`).all() as Array<{ id: string; name: string; description: string | null; created_at: number; updated_at: number }>;
+		
+		return rows.map(row => ({
+			id: row.id,
+			name: row.name,
+			description: row.description ?? undefined,
+			createdAt: row.created_at,
+			updatedAt: row.updated_at,
+		}));
+	}
+
+	async getWorkspace(id: string): Promise<{ id: string; name: string; description?: string; createdAt: number; updatedAt: number } | null> {
+		const row = this.db.prepare(`
+			SELECT id, name, description, created_at, updated_at FROM workspaces WHERE id = ?
+		`).get(id) as { id: string; name: string; description: string | null; created_at: number; updated_at: number } | undefined;
+		
+		if (!row) return null;
+		
+		return {
+			id: row.id,
+			name: row.name,
+			description: row.description ?? undefined,
+			createdAt: row.created_at,
+			updatedAt: row.updated_at,
+		};
+	}
+
+	async createWorkspace(workspace: { id: string; name: string; description?: string }): Promise<{ id: string; name: string; description?: string; createdAt: number; updatedAt: number }> {
+		const now = Date.now();
+		this.db.prepare(`
+			INSERT OR REPLACE INTO workspaces (id, name, description, created_at, updated_at)
+			VALUES (?, ?, ?, ?, ?)
+		`).run(workspace.id, workspace.name, workspace.description ?? null, now, now);
+		
+		return {
+			id: workspace.id,
+			name: workspace.name,
+			description: workspace.description,
+			createdAt: now,
+			updatedAt: now,
+		};
+	}
+
+	async deleteWorkspace(id: string): Promise<boolean> {
+		const result = this.db.prepare(`DELETE FROM workspaces WHERE id = ?`).run(id);
+		return result.changes > 0;
+	}
+
+	// ============================================================================
+	// Session Management
+	// ============================================================================
+
+	async listSessions(workspace?: string): Promise<Array<{ id: string; workspace: string; recipeId?: string; runId?: string; status: string; createdAt: number; updatedAt: number }>> {
+		let query = `SELECT id, workspace, recipe_id, run_id, status, created_at, updated_at FROM sessions`;
+		let rows: Array<{ id: string; workspace: string; recipe_id: string | null; run_id: string | null; status: string; created_at: number; updated_at: number }>;
+		
+		if (workspace) {
+			query += ` WHERE workspace = ? ORDER BY created_at DESC`;
+			rows = this.db.prepare(query).all(workspace) as typeof rows;
+		} else {
+			query += ` ORDER BY created_at DESC`;
+			rows = this.db.prepare(query).all() as typeof rows;
+		}
+		
+		return rows.map(row => ({
+			id: row.id,
+			workspace: row.workspace,
+			recipeId: row.recipe_id ?? undefined,
+			runId: row.run_id ?? undefined,
+			status: row.status,
+			createdAt: row.created_at,
+			updatedAt: row.updated_at,
+		}));
+	}
+
+	async getSession(id: string): Promise<{ id: string; workspace: string; recipeId?: string; runId?: string; status: string; createdAt: number; updatedAt: number } | null> {
+		const row = this.db.prepare(`
+			SELECT id, workspace, recipe_id, run_id, status, created_at, updated_at FROM sessions WHERE id = ?
+		`).get(id) as { id: string; workspace: string; recipe_id: string | null; run_id: string | null; status: string; created_at: number; updated_at: number } | undefined;
+		
+		if (!row) return null;
+		
+		return {
+			id: row.id,
+			workspace: row.workspace,
+			recipeId: row.recipe_id ?? undefined,
+			runId: row.run_id ?? undefined,
+			status: row.status,
+			createdAt: row.created_at,
+			updatedAt: row.updated_at,
+		};
+	}
+
+	async createSession(session: { id: string; workspace: string; recipeId?: string; runId?: string; status?: string }): Promise<{ id: string; workspace: string; recipeId?: string; runId?: string; status: string; createdAt: number; updatedAt: number }> {
+		const now = Date.now();
+		this.db.prepare(`
+			INSERT OR REPLACE INTO sessions (id, workspace, recipe_id, run_id, status, created_at, updated_at)
+			VALUES (?, ?, ?, ?, ?, ?, ?)
+		`).run(
+			session.id,
+			session.workspace,
+			session.recipeId ?? null,
+			session.runId ?? null,
+			session.status ?? "idle",
+			now,
+			now
+		);
+		
+		return {
+			id: session.id,
+			workspace: session.workspace,
+			recipeId: session.recipeId,
+			runId: session.runId,
+			status: session.status ?? "idle",
+			createdAt: now,
+			updatedAt: now,
+		};
+	}
+
+	async updateSession(id: string, updates: { status?: string; recipeId?: string; runId?: string }): Promise<boolean> {
+		const existing = await this.getSession(id);
+		if (!existing) return false;
+		
+		const now = Date.now();
+		this.db.prepare(`
+			UPDATE sessions SET 
+				recipe_id = COALESCE(?, recipe_id),
+				run_id = COALESCE(?, run_id),
+				status = COALESCE(?, status),
+				updated_at = ?
+			WHERE id = ?
+		`).run(
+			updates.recipeId ?? null,
+			updates.runId ?? null,
+			updates.status ?? null,
+			now,
+			id
+		);
+		
+		return true;
+	}
+
+	async deleteSession(id: string): Promise<boolean> {
+		const result = this.db.prepare(`DELETE FROM sessions WHERE id = ?`).run(id);
+		return result.changes > 0;
+	}
+
+	// ============================================================================
+	// Recipe Management
+	// ============================================================================
+
+	async listRecipes(workspace: string): Promise<Array<{ id: string; workspace: string; name: string; description?: string; steps: unknown[]; createdAt: number; updatedAt: number }>> {
+		const rows = this.db.prepare(`
+			SELECT id, workspace, name, description, steps, created_at, updated_at 
+			FROM recipes 
+			WHERE workspace = ? 
+			ORDER BY created_at DESC
+		`).all(workspace) as Array<{ id: string; workspace: string; name: string; description: string | null; steps: string; created_at: number; updated_at: number }>;
+		
+		return rows.map(row => ({
+			id: row.id,
+			workspace: row.workspace,
+			name: row.name,
+			description: row.description ?? undefined,
+			steps: JSON.parse(row.steps),
+			createdAt: row.created_at,
+			updatedAt: row.updated_at,
+		}));
+	}
+
+	async getRecipe(id: string, workspace: string): Promise<{ id: string; workspace: string; name: string; description?: string; steps: unknown[]; createdAt: number; updatedAt: number } | null> {
+		const row = this.db.prepare(`
+			SELECT id, workspace, name, description, steps, created_at, updated_at 
+			FROM recipes 
+			WHERE id = ? AND workspace = ?
+		`).get(id, workspace) as { id: string; workspace: string; name: string; description: string | null; steps: string; created_at: number; updated_at: number } | undefined;
+		
+		if (!row) return null;
+		
+		return {
+			id: row.id,
+			workspace: row.workspace,
+			name: row.name,
+			description: row.description ?? undefined,
+			steps: JSON.parse(row.steps),
+			createdAt: row.created_at,
+			updatedAt: row.updated_at,
+		};
+	}
+
+	async createRecipe(recipe: { id: string; workspace: string; name: string; description?: string; steps: unknown[] }): Promise<{ id: string; workspace: string; name: string; description?: string; steps: unknown[]; createdAt: number; updatedAt: number }> {
+		const now = Date.now();
+		this.db.prepare(`
+			INSERT OR REPLACE INTO recipes (id, workspace, name, description, steps, created_at, updated_at)
+			VALUES (?, ?, ?, ?, ?, ?, ?)
+		`).run(
+			recipe.id,
+			recipe.workspace,
+			recipe.name,
+			recipe.description ?? null,
+			JSON.stringify(recipe.steps),
+			now,
+			now
+		);
+		
+		return {
+			id: recipe.id,
+			workspace: recipe.workspace,
+			name: recipe.name,
+			description: recipe.description,
+			steps: recipe.steps,
+			createdAt: now,
+			updatedAt: now,
+		};
+	}
+
+	async deleteRecipe(id: string, workspace: string): Promise<boolean> {
+		const result = this.db.prepare(`DELETE FROM recipes WHERE id = ? AND workspace = ?`).run(id, workspace);
+		return result.changes > 0;
+	}
+
+	async healthCheck(): Promise<boolean> {
+		try {
+			this.db.prepare("SELECT 1").get();
+			return true;
+		} catch {
+			return false;
+		}
 	}
 
 	private rowToChunk(row: ChunkRow): ContextChunk {

@@ -9,6 +9,7 @@ import {
 	createAuthMiddleware,
 	createRateLimitMiddleware,
 	createCorsMiddleware,
+	createWorkspaceMiddleware,
 	errorHandler,
 } from "./http/middleware.js";
 import { BusHub } from "./websocket/bus-hub.js";
@@ -48,6 +49,7 @@ export class EnhancementServer {
 		// Apply middleware
 		app.use("*", createCorsMiddleware(this.config));
 		app.use("/api/*", createAuthMiddleware(this.config));
+		app.use("/api/*", createWorkspaceMiddleware(this.config));
 		app.use("/api/*", createRateLimitMiddleware(this.config));
 		app.onError(errorHandler);
 
